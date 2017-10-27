@@ -278,7 +278,7 @@ ${green}Destination Directory${reset}: 	${DST_DIR}
 		3)	message="\n${green}[Info]${reset} No subfolders detected...";;
 		4)	message="\n${green}[Info]${reset} Subfolders detected, moving...";;
 		5)	message="\n${green}[Info]${reset} Deleting extracted files...";;
-		*)
+		*)	
 	esac
 	;;
 	5)	message="${yellow}Warning${reset}: Not a compatible file. Skipping...\n\n";;
@@ -306,7 +306,7 @@ fi
 	11) message="${green}[Info]${reset} \t${commandName} is installed at ${commandPath}\n";;
 	12)	message="Exiting...\n\n"
 	;;
-	13)	message="${red}Error${reset}: Not a valid directory";;
+	13)	message="${red}Error${reset}: Not a valid directory\n\n";;
 	14)
 		message="
 
@@ -319,7 +319,7 @@ fi
 	This script mainly uses ImageMagick to convert the images
 	to pdf files and 7zip/p7z to extract the archives.
 
-	The full list of programs used in the script is:
+	The partial list of programs used in the script is:
 
 		${yellow}*${reset} command	${yellow}*${reset} 7z/unzip	${yellow}*${reset} mkdir		${yellow}*${reset} rmdir
 		${yellow}*${reset} find		${yellow}*${reset} convert	${yellow}*${reset} rm		${yellow}*${reset} eval
@@ -329,12 +329,20 @@ fi
 	${yellow}NOTE${reset}: Both folders must already exist before starting this script
 
 	"
+	;;
+	15)	message="Unknown option: $arg\n\n"
 esac
 printf "${message}"
 
 }
 
 # Start script
+
+# Declaring color variables
+green="\e[32m\e[1m"
+red="\e[31m\e[1m"
+yellow="\e[33m\e[1m"
+reset="\e[0m"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -357,17 +365,12 @@ while [[ $# -gt 0 ]]; do
 	    ;;
 	    
 	    -*|*)
-	        printf "Unknown option: $1"
+			arg="$1"
+	        message 15
 	        message 13
 	        exit 1
 	esac
 done
-
-# Declaring color variables
-green="\e[32m\e[1m"
-red="\e[31m\e[1m"
-yellow="\e[33m\e[1m"
-reset="\e[0m"
 
 trap 'exit 1' INT
 preRun
