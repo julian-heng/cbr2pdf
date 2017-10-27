@@ -2,7 +2,7 @@
 cbr2pdf is a bash script will convert all .cbr and .cbz files recursively from a folder to PDF files in a seperate folder with pretty text and stats. This script mainly uses ImageMagick to convert the images to pdf files and 7zip/p7z to extract the archives.
 
 ## Installation
-### Git clone
+### Git
 ```sh
 $ git clone https://github.com/Julian-Heng/cbr2pdf.git
 $ cd cbr2pdf
@@ -13,6 +13,25 @@ $ ./cbr2pdf.sh
 $ curl https://raw.githubusercontent.com/Julian-Heng/cbr2pdf/master/cbr2pdf.sh > cbr2pdf.sh
 $ chmod +x cbr2pdf.sh
 $ ./cbr2pdf.sh
+```
+
+## Dependencies
+The main commands used in this script are ```7z``` and ```ImageMagick```, but also include commands from the [GNU Core Utils](https://en.wikipedia.org/wiki/List_of_GNU_Core_Utilities_commands) like ```date```, ```dirname```, ```basename``` and ```printf```. So do keep that in mind. But if you're just running Ubuntu, or Arch Linux or any kind if linux, you should be fine.
+
+For MacOS, you need [homebrew](https://brew.sh/) to install imagemagick and 7zip. It will also install the Xcode Commandline tools, which includes ```git```. Curl is also not installed by default.
+
+### Installing Dependencies
+#### Ubuntu/Debian
+```sh
+$ sudo apt install p7zip-full imagemagick
+```
+#### Arch Linux/Antergos
+ ```sh
+ $ sudo pacman -S p7zip imagemagick
+ ```
+#### MacOS
+```sh
+$ brew install p7zip imagemagick
 ```
 
 ## Usage
