@@ -3,7 +3,13 @@
 preRun () {
 	# Pre-converting checks, ensure that there is no missing dependencies
 
+	if [[ $HELP = true ]]; then
+		message 14
+		exit 1
+	fi
+
 	start=$(date +%s)
+	START_TIME=$(date +"%T %D")
 
 	if [[ $VERBOSE = true ]]; then
 		message 1
@@ -90,7 +96,7 @@ linebreak () {
 
 main() {
 
-	TOTAL=$(find "${INPUT_PATH}" -type f | wc -l)
+	TOTAL=$(find "${INPUT_PATH}" -type f | wc -l| sed -e 's/ //g')
 	COUNT=1
 
 	while read -r inputFile; do
@@ -115,14 +121,16 @@ main() {
 			printf "\n"
 
 			# Make output directory
-			mkdir -p "${DST_DIR}/${SRC_FILE}"
+			mkdir -p "${DST_DIR}/${SRC_FILENAME}"
 			
 			# Extract, check, convert and delete
 			
-			extract "${inputFile}" "${DST_DIR}/${SRC_FILE}"
-			checkFolder "${DST_DIR}/${SRC_FILE}"
-			convertFile "${DST_DIR}/${SRC_FILE}/*.{jpg,png}" "${DST_DIR}/${SRC_FILENAME}.pdf"
-			delete "${DST_DIR}/${SRC_FILE}"
+			extract "${inputFile}" "${DST_DIR}/${SRC_FILENAME}"
+			checkFolder "${DST_DIR}/${SRC_FILENAME}"
+			if [[ $EXTRACT != true ]]; then
+				convertFile "${DST_DIR}/${SRC_FILENAME}/*.{jpg,png}" "${DST_DIR}/${SRC_FILENAME}.pdf"
+				delete "${DST_DIR}/${SRC_FILENAME}"
+			fi
 			
 			message 6
 			if [[ $VERBOSE = true ]]; then
@@ -146,6 +154,7 @@ main() {
 	done < <(find "${INPUT_PATH}" -type f)
 
 	end=$(date +%s)
+	END_TIME=$(date +"%T %D")
 	progTime=$((end - start))
 	message 7
 }
@@ -247,10 +256,11 @@ message () {
 case $1 in
 	1)
 		message="
-${green}Verbose Output${reset}: 	$VERBOSE
-${green}Input DIR${reset}: 		$INPUT_PATH
-${green}Output DIR${reset}: 		$OUTPUT_PATH
-${green}Start time${reset}: 		$(date +"%T %D")
+${green}Verbose Output${reset}: 	${VERBOSE}
+${green}Extract Only${reset}:		${EXTRACT}
+${green}Input DIR${reset}: 		${INPUT_PATH}
+${green}Output DIR${reset}: 		${OUTPUT_PATH}
+${green}Start time${reset}: 		${START_TIME}
 \n"
 	;;
 	2)
@@ -263,7 +273,7 @@ ${green}[Info]${reset} 	Starting conversion process
 		message="
 ${green}[Info]${reset} File information:
 
-${green}Job Number${reset}: 		${COUNT}/${TOTAL}
+${green}Job Number${reset}:		${COUNT}/${TOTAL}
 ${green}Parent Directory${reset}: 	${PRT_DIR}
 ${green}Source Directory${reset}: 	${SRC_DIR}
 ${green}Source File${reset}: 		${inputFile}
@@ -281,7 +291,7 @@ ${green}Destination Directory${reset}: 	${DST_DIR}
 		*)	
 	esac
 	;;
-	5)	message="${yellow}Warning${reset}: Not a compatible file. Skipping...\n\n";;
+	5)	message="${yellow}[Warning]${reset} Not a compatible file. Skipping...\n\n";;
 	6)	message="\n\n${green}[Info]${reset} Finish converting ${DST_DIR}/${SRC_FILE}";;
 	7)
 
@@ -289,8 +299,8 @@ if [[ $VERBOSE = true ]]; then
 
 	message=\
 "${green}[Info]${reset} Finish converting all files
-${green}[Info]${reset} Start time is $(date -d@"$start" -u +"%T %D")
-${green}[Info]${reset} End time is $(date -d@"$end" -u +"%T %D")
+${green}[Info]${reset} Start time is ${START_TIME}
+${green}[Info]${reset} End time is ${END_TIME}
 ${green}[Info]${reset} Convert time is $(date -d@"$progTime" -u +%H:%M:%S)
 
 "
@@ -300,17 +310,24 @@ else
 fi
 
 	;;
-	8)	message="${red}Error${reset}: \t${commandName} is not installed\n";;
+	8)	message="${red}[Error]${reset} \t${commandName} is not installed\n";;
 	9)	message="${green}[Info]${reset} \tUsing unzip...\n${green}[Info]${reset} \tPlease note that unzip does not work all archives\n\n";;
 	10)	message="\tPlease install ImageMagick\n\n";;
 	11) message="${green}[Info]${reset} \t${commandName} is installed at ${commandPath}\n";;
 	12)	message="Exiting...\n\n"
 	;;
-	13)	message="${red}Error${reset}: Not a valid directory\n\n";;
+	13)	message="\n\t${red}[Error]${reset} Not a valid directory\n\n";;
 	14)
 		message="
+	Usage:	./cbr2pdf.sh --option --option \e[4mVALUE${reset}
 
-	Usage:	./cbr2pdf.sh [-v|--verbose] [-i|--input \e[4m\"DIRECTORY\"${reset}] [-o|--output \e[4m\"DIRECTORY\"${reset}]
+	Options:
+
+	[-v|--verbose]			Enable verbose output
+	[-x|--extract]			Only extract files without converting
+	[-h|--help]			Displays this message
+	[-i|--input \e[4m\"DIRECTORY\"${reset}]	The input path for the files
+	[-o|--output \e[4m\"DIRECTORY\"${reset}]	The output path for the converted files
 
 	This bash script convert all comic book archives with the 
 	file extension .cbr or .cbz recursively from a folder 
@@ -319,15 +336,9 @@ fi
 	This script mainly uses ImageMagick to convert the images
 	to pdf files and 7zip/p7z to extract the archives.
 
-	The partial list of programs used in the script is:
-
-		${yellow}*${reset} command	${yellow}*${reset} 7z/unzip	${yellow}*${reset} mkdir		${yellow}*${reset} rmdir
-		${yellow}*${reset} find		${yellow}*${reset} convert	${yellow}*${reset} rm		${yellow}*${reset} eval
-		${yellow}*${reset} dirname	${yellow}*${reset} sed		${yellow}*${reset} date		${yellow}*${reset} printf
-		${yellow}*${reset} basename	${yellow}*${reset} mv		${yellow}*${reset} tput
-
-	${yellow}NOTE${reset}: Both folders must already exist before starting this script
-
+	${yellow}[NOTE]${reset} Both folders must already exist before starting this script
+	${yellow}[NOTE]${reset} This script uses commands from the GNU Core Utils
+	${yellow}[NOTE]${reset} For MacOS, the date command doesn't work the same way as it is in Linux
 	"
 	;;
 	15)	message="Unknown option: $arg\n\n"
@@ -344,6 +355,11 @@ red="\e[31m\e[1m"
 yellow="\e[33m\e[1m"
 reset="\e[0m"
 
+# Reseting variables on startup
+VERBOSE=false
+EXTRACT=false
+HELP=false
+
 # Parse arguments
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -351,19 +367,25 @@ while [[ $# -gt 0 ]]; do
 	        VERBOSE=true
 	        shift
 	    ;;
-	
+
+	    -x|--extract)
+			EXTRACT=true
+			shift
+		;;
+	    -h|--help)
+			HELP=true
+			shift
+		;;
 	    -i|--input)
 	        INPUT_PATH="$2"
 	        shift
 	        shift
 	    ;;
-	
 	    -o|--output)
 	        OUTPUT_PATH="$2"
 	        shift
 	        shift
 	    ;;
-	    
 	    -*|*)
 			arg="$1"
 	        message 15
