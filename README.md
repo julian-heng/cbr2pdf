@@ -1,5 +1,5 @@
 # cbr2pdf
-cbr2pdf is a bash script will convert all .cbr and .cbz files recursively from a folder to PDF files in a seperate folder with pretty text and stats. This script mainly uses ImageMagick to convert the images to pdf files and 7zip/p7z to extract the archives.
+cbr2pdf is a bash script will convert all .cbr and .cbz files recursively from a folder to PDF files in a seperate folder with pretty colors and stats. This script mainly uses ImageMagick to convert the images to pdf files and 7zip/p7z to extract the archives.
 
 ## Installation
 ### Git
@@ -36,7 +36,7 @@ $ brew install p7zip imagemagick
 
 ## Usage
 ```sh
-$ ./cbr2pdf.sh [-v|--verbose] [-i|--input "DIRECTORY"] [-o|--output "DIRECTORY"]
+$ ./cbr2pdf.sh [-v|--verbose] [-x|--extract] [-h|--help] [-i|--input "DIRECTORY"] [-o|--output "DIRECTORY"]
 ```
 
 ## Sample Output
