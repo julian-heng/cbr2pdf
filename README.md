@@ -6,6 +6,7 @@ cbr2pdf is a bash script will convert all .cbr and .cbz files recursively from a
 ```sh
 $ git clone https://github.com/Julian-Heng/cbr2pdf.git
 $ cd cbr2pdf
+$ chmod +x cbr2pdf.sh
 $ ./cbr2pdf.sh
 ```
 ### Curl
