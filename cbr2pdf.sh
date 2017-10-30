@@ -96,7 +96,7 @@ linebreak () {
 
 main() {
 
-	TOTAL=$(find "${INPUT_PATH}" -type f | wc -l| sed -e 's/ //g')
+	TOTAL=$(find "${INPUT_PATH}" -type f | wc -l | sed -e 's/ //g')
 	COUNT=1
 
 	while read -r inputFile; do
