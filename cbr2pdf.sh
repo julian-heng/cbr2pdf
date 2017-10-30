@@ -169,7 +169,7 @@ extract () {
 		if [[ $VERBOSE = true ]]; then
 			unzip "$1" -d "$2"
 		else
-			unzip "$1" -q -d "$2"; spinner
+			unzip "$1" -d "$2" &> /dev/null; spinner
 		fi
 	else
 		if [[ $VERBOSE = true ]]; then
@@ -292,7 +292,15 @@ ${green}Destination Directory${reset}: 	${DST_DIR}
 	esac
 	;;
 	5)	message="${yellow}[Warning]${reset} Not a compatible file. Skipping...\n\n";;
-	6)	message="\n\n${green}[Info]${reset} Finish converting ${DST_DIR}/${SRC_FILE}";;
+	6)	
+
+if [[ $EXTRACT = true ]]; then
+	message="\n\n${green}[Info]${reset} Finish extracting ${DST_DIR}/${SRC_FILE}"
+else
+	message="\n\n${green}[Info]${reset} Finish converting ${DST_DIR}/${SRC_FILE}"
+fi
+;;
+
 	7)
 
 if [[ $VERBOSE = true ]]; then
@@ -306,10 +314,16 @@ ${green}[Info]${reset} Convert time is $(date -d@"$progTime" -u +%H:%M:%S)
 "
 
 else
-	message="${green}[Info]${reset} Finish converting all files\n\n"
-fi
 
-	;;
+	if [[ $EXTRACT = true ]]; then
+	message="${green}[Info]${reset} Finish extracting all files\n\n"
+	else
+	message="${green}[Info]${reset} Finish converting all files\n\n"
+	fi
+	
+fi
+;;
+
 	8)	message="${red}[Error]${reset} \t${commandName} is not installed\n";;
 	9)	message="${green}[Info]${reset} \tUsing unzip...\n${green}[Info]${reset} \tPlease note that unzip does not work all archives\n\n";;
 	10)	message="\tPlease install ImageMagick\n\n";;
