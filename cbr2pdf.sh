@@ -1,244 +1,148 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-preRun () {
-	# Pre-converting checks, ensure that there is no missing dependencies
+# ========== Formating ====================================================
+# This section delclares all of the text formatting required when printing
+# information like color codes and linebreaks.
 
-	if [[ $HELP = true ]]; then
-		message 14
-		exit 1
-	fi
+green=$'\e[32m\e[1m'
+red=$'\e[31m\e[1m'
+yellow=$'\e[33m\e[1m'
+reset=$'\033[0m'
+underline=$'\e[4m'
+linebreak=$'================================================'
 
-	start=$(date +%s)
-	START_TIME=$(date +"%T %D")
+infobox="${green}[Info]${reset}"
+warningbox="${yellow}[Warning]${reset}"
+errorbox="${red}[Error]${reset}"
 
-	if [[ $VERBOSE = true ]]; then
-		message 1
-	fi
+# ========== Variables ====================================================
+# This section exist so that printing out these variables where they are
+# not assigned a value, like true, will not result in a blank string.
+# Thus they are assigned false before the script starts, then they will
+# get assigned true if enabled.
 
-	progList=("7z" "basename" "convert" "date" "dirname" "find" "mkdir" "mv" "rm" "rmdir" "sed" "tput" "unzip")
-	checkArg "$OUTPUT_PATH"
+verbose=false
+extract=false
+help=false
+input=false
+output=false
 
-	for i in "${progList[@]}"; do
-		checkProg "$i"
-	done
+# ========== Functions ====================================================
 
-	if [[ $quit == true ]]; then
+print_file_info() { 
 
-		message 12
-		exit 1
+# This section prints out the file information using the pre-defined
+# color codes and formatting.
 
-	fi
-	if [[ $VERBOSE = true ]]; then
-		message 2
-		linebreak
-	fi
+if [[ $verbose = true ]] || [[ $debug = true ]]; then
+	printf "%s\n" "${linebreak}"
+	printf "%s File information\n" "${infobox}"
+	printf "%s\n" "${linebreak}"
+	printf "%sJob Number%s:		%s/%s\n" "${green}" "${reset}" "${count}" "${total}"
+	printf "%sParent Directory%s:	%s\n" "${green}" "${reset}" "${parent}"
+	printf "%sSource Directory%s:	%s\n" "${green}" "${reset}" "${source_dir}"
+	printf "%sSource File%s:		%s\n" "${green}" "${reset}" "${inputFile}"
+	printf "%sFile Type%s:		%s\n" "${green}" "${reset}" "${source_ext}"
+	printf "%sOutput Directory%s:	%s\n\n" "${green}" "${reset}" "${output}"
+else
+	printf "%s\n" "${linebreak}"
+	printf "%s File information\n" "${infobox}"
+	printf "%s\n" "${linebreak}"
+	printf "%sJob Number%s:		%s/%s\n" "${green}" "${reset}" "${count}" "${total}"
+	printf "%sSource File%s:		%s\n" "${green}" "${reset}" "${inputFile}"
+	printf "%sOutput Directory%s:	%s\n\n" "${green}" "${reset}" "${output}"
+fi
 }
 
-checkArg () {
-	# This function checks the arguments and see if they are directories or not
-	# If they are not, it will print the usage message and exit
+print_if_verbose() {
 
-	if [[ ! -d $1 ]]; then
+# Print a new line if verbose/debug is enabled
 
-		message 14
-		message 13
-		exit 1
-
-	fi
-}
-
-checkProg () {
-	# Check if the program exist, if not then it will state that it is not installed
-	# and exit the script.
-	
-	# If p7z is not installed, the script will fallback to unzip instead. However,
-	# due to how some comic archives are compressed, unzip might not be able to 
-	# extract those files, thus why p7z is used
-
-	commandName=$1
-	commandPath=$(command -v "$commandName")
-
-	if [[ -z $commandPath ]]; then
-
-		message 8
-		quit=true
-
-		case $commandName in
-			7z)
-				message 9
-				checkProg unzip
-				useUnzip=true
-				quit=false
-			;;
-			convert)
-				message 10
-		esac
-
+	if [[ $verbose = true ]] || [[ $debug = true ]]; then
+		printf "\n%s\n" "${linebreak}"
 	else
-
-		if [[ $VERBOSE = true ]]; then
-			message 11
-		fi
+		:
 	fi
 }
 
-linebreak () {
-	# Create line breaks according to the size of the terminal
+extract() {
 
-	if [[ $VERBOSE = true ]]; then
-		if (( $(tput cols) >= 96)) ; then
-			printf "\n"; eval printf '%.0s-' {1..92}; printf "\n"; printf "\n"
-		else
-			printf "\n"; eval printf '%.0s-' '{1..'"${COLUMNS:-$(tput cols)}"\}; printf "\n"; printf "\n"
-		fi
-	fi
-}
+# This section extract files through the parsed arguments.
 
-main() {
-
-	TOTAL=$(find "${INPUT_PATH}" -type f | wc -l | sed -e 's/ //g')
-	COUNT=1
-
-	while read -r inputFile; do
-
-		PRT_DIR=$(dirname "${INPUT_PATH}")		# Get parent directory in order to remove unecessary long filenames in the variable DST_DIR
-		SRC_DIR=${inputFile%/*}					# Get the source directory
-		SRC_FILE=${inputFile##*/}				# Get the source file
-		SRC_FILENAME=$(basename "$inputFile")	# Get the source filename
-		SRC_FILENAME=${SRC_FILENAME%.*}			
-		SRC_EXT=${inputFile##*.}				# Get the source file extension
-		DST_DIR=${SRC_DIR#$PRT_DIR}				# Get destination directory
-		DST_DIR=$OUTPUT_PATH/${DST_DIR#/}
-
-		# Make the destination folder
-		mkdir -p "${DST_DIR}"
-		
-		# Detects the file type and skip if it's not a comic book archive
-		if [[ $SRC_EXT == "cbr" ]] || [[ $SRC_EXT == "cbz" ]]; then
-			
-			# Print file and directory information
-			message 3
-			printf "\n"
-
-			# Make output directory
-			mkdir -p "${DST_DIR}/${SRC_FILENAME}"
-			
-			# Extract, check, convert and delete
-			
-			extract "${inputFile}" "${DST_DIR}/${SRC_FILENAME}"
-			checkFolder "${DST_DIR}/${SRC_FILENAME}"
-			if [[ $EXTRACT != true ]]; then
-				convertFile "${DST_DIR}/${SRC_FILENAME}/*.{jpg,png}" "${DST_DIR}/${SRC_FILENAME}.pdf"
-				delete "${DST_DIR}/${SRC_FILENAME}"
-			fi
-			
-			message 6
-			if [[ $VERBOSE = true ]]; then
-				linebreak
-			else
-				if (( $(tput cols) >= 96)); then
-					printf "\n"; eval printf '%.0s-' {1..92}; printf "\n"; printf "\n"
-				else
-					printf "\n"; eval printf '%.0s-' '{1..'"${COLUMNS:-$(tput cols)}"\}; printf "\n"; printf "\n"
-				fi
-			fi
-
-		else
-
-			printf "\n"
-			message 3
-			message 5
-
-		fi
-		((++COUNT))
-	done < <(find "${INPUT_PATH}" -type f)
-
-	end=$(date +%s)
-	END_TIME=$(date +"%T %D")
-	progTime=$((end - start))
-	message 7
-}
-
-extract () {
-	# Extracts files
-
-	message 4 1
-	linebreak
-
-	if [[ $useUnzip = true ]]; then
-		if [[ $VERBOSE = true ]]; then
+	printf "%s Extracting archive..." "${infobox}"
+	if [[ $use7z = false ]]; then
+		if [[ $verbose = true ]] || [[ $debug = true ]]; then
 			unzip "$1" -d "$2"
 		else
 			unzip "$1" -d "$2" &> /dev/null; spinner
 		fi
 	else
-		if [[ $VERBOSE = true ]]; then
+		if [[ $verbose = true ]] || [[ $debug = true ]]; then
 			7z x "$1" -o"$2"
 		else
 			7z x "$1" -o"$2" &> /dev/null; spinner
 		fi
-		
+	fi
+
+}
+
+checkFolder() {
+
+# Sometimes, the images are within a folder after extraction
+# This detects if there is a subfolder after extraction and
+# moves the files up one level
+
+	check=$(find "$1" -type d -maxdepth 2 | sed -n '2 p')
+
+	if [[ $check == "" ]]; then
+		printf "\n%s No subfolders detected..." "${infobox}"; print_if_verbose
+	else
+		printf "\n%s Subfolders detected, moving..." "${infobox}"; print_if_verbose
+		if [[ $verbose = true ]] || [[ $debug = true ]]; then
+			mv -v "${check}"/* "$1"
+		else
+			mv "${check}"/* "$1"
+		fi
+		rmdir "${check}"
 	fi
 }
 
-convertFile () {
-	# Convert .jpg to .pdf
+convertFile() {
 
-	message 4 2
-	linebreak
-	if [[ $VERBOSE = true ]]; then
+# Convert .jpg to .pdf
+
+	printf "\n%s Converting to PDF..." "${infobox}"; print_if_verbose
+	if [[ $verbose = true ]] || [[ $debug = true ]]; then
 		convert "$1" -density 100 -verbose "$2"
 	else
 		convert "$1" -density 100 "$2" &
 		spinner
 	fi
-}
-
-checkFolder () {
-	# Sometimes, the images are within a folder after extraction
-	# This detects if there is a subfolder after extraction and
-	# moves the files up one level
-
-	check=$(find "$1" -type d -maxdepth 2 | sed -n '2 p')
-
-	if [[ $check == "" ]]; then
-		message 4 3
-		linebreak
-	else
-		message 4 4
-		linebreak
-		if [[ $VERBOSE = true ]]; then
-			mv -v "$check"/* "$1"
-		else
-			mv "$check"/* "$1"
-		fi
-		rmdir "$check"
-	fi
-
-	check=""
 
 }
 
-delete () {
-	# Delete the extracted files
+delete() {
 
-	message 4 5
-	linebreak
-	if [[ $VERBOSE = true ]]; then
+# Delete the extracted files
+
+	printf "\n%s Deleting extracted files..." "${infobox}"; print_if_verbose
+	if [[ $verbose = true ]] || [[ $debug = true ]]; then
 		rm -rfv "$1"
 	else
 		rm -rf "$1"
 	fi
+
 }
 
 spinner() {
-	# Referenced from http://fitnr.com/showing-a-bash-spinner.html
-	# By Louis Marascio
+
+# Referenced from http://fitnr.com/showing-a-bash-spinner.html
+# By Louis Marascio
 
 	local pid=$!
 	local delay=0.1
-	local spinstr='|/-\'
-	while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
+	local spinstr='/-\|'
+	while ps a | awk '{print $1}' | grep -q $pid; do
 		local temp=${spinstr#?}
 		printf " [%c]  " "$spinstr"
 		local spinstr=$temp${spinstr%"$temp"}
@@ -249,99 +153,153 @@ spinner() {
 
 }
 
-message () {
-	# Prints out a message the matches the argument after being called
+get_args() {
+	
+# Determing the parsed arguments
 
 
-case $1 in
-	1)
-		message="
-${green}Verbose Output${reset}: 	${VERBOSE}
-${green}Extract Only${reset}:		${EXTRACT}
-${green}Input DIR${reset}: 		${INPUT_PATH}
-${green}Output DIR${reset}: 		${OUTPUT_PATH}
-${green}Start time${reset}: 		${START_TIME}
-\n"
-	;;
-	2)
-		message="
-${green}[Info]${reset} 	Complete pre-run checks
-${green}[Info]${reset} 	Starting conversion process
-"
-	;;
-	3)
-		message="
-${green}[Info]${reset} File information:
+	# If no arguments are parsed, print help and exit
+	if [[ -z $1 ]]; then	
+		usage print
+		printf "%s No options specified\n\n" "${errorbox}"
+		exit 2
+	fi
 
-${green}Job Number${reset}:		${COUNT}/${TOTAL}
-${green}Parent Directory${reset}: 	${PRT_DIR}
-${green}Source Directory${reset}: 	${SRC_DIR}
-${green}Source File${reset}: 		${inputFile}
-${green}File Type${reset}: 		${SRC_EXT}
-${green}Destination Directory${reset}: 	${DST_DIR}
-"
-	;;
-	4)
-	case $2 in
-		1)	message="${green}[Info]${reset} Extracting archive...";;
-		2)	message="\n${green}[Info]${reset} Converting to PDF...";;
-		3)	message="\n${green}[Info]${reset} No subfolders detected...";;
-		4)	message="\n${green}[Info]${reset} Subfolders detected, moving...";;
-		5)	message="\n${green}[Info]${reset} Deleting extracted files...";;
-		*)	
-	esac
-	;;
-	5)	message="${yellow}[Warning]${reset} Not a compatible file. Skipping...\n\n";;
-	6)	
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			-v|--verbose) verbose=true ;;
+			-x|--extract) extract=true ;;
+			-h|--help) usage; help=true ;;
+			-i|--input) input_dir="$2"; shift; input=true ;;
+			-o|--output) output_dir="$2"; shift; output=true ;;
+			-d|--debug) debug=true ;;
+	    	-*|*) usage print; printf "%s Unknown option: $1\n\n" "${errorbox}"; exit 2
+		esac
+		shift
+	done
 
-if [[ $EXTRACT = true ]]; then
-	message="\n\n${green}[Info]${reset} Finish extracting ${DST_DIR}/${SRC_FILE}"
-else
-	message="\n\n${green}[Info]${reset} Finish converting ${DST_DIR}/${SRC_FILE}"
-fi
-;;
+}
 
-	7)
+print_debug() {
 
-if [[ $VERBOSE = true ]]; then
+# Print debug information
 
-	message=\
-"${green}[Info]${reset} Finish converting all files
-${green}[Info]${reset} Start time is ${START_TIME}
-${green}[Info]${reset} End time is ${END_TIME}
-${green}[Info]${reset} Convert time is $(date -d@"$progTime" -u +%H:%M:%S)
+	if [[ -z $input_dir ]]; then
+		input_dir=null
+	fi
+	if [[ -z $output_dir ]]; then
+		output_dir=null
+	fi
 
-"
+	if [[ $debug == true ]]; then
+		printf "\nverbose: 	%s\n" "${verbose}"
+		printf "extract: 	%s\n" "${extract}"
+		printf "help: 		%s\n" "${help}"
+		printf "input: 		%s\n" "${input}"
+		printf "output: 	%s\n" "${output}"
+		printf "debug: 		%s\n" "${debug}"
+		printf "input_dir: 	%s\n" "${input_dir}"
+		printf "output_dir: 	%s\n" "${output_dir}"
+	fi
 
-else
+}
 
-	if [[ $EXTRACT = true ]]; then
-	message="${green}[Info]${reset} Finish extracting all files\n\n"
-	else
-	message="${green}[Info]${reset} Finish converting all files\n\n"
+print_verbose() {
+
+# Print verbose information
+
+	if [[ $verbose == true ]]; then
+		printf "\n%sVerbose Output%s: %s\n" "${green}" "${reset}" "${verbose}"
+		printf "%sExtract Only%s:	%s\n" "${green}" "${reset}" "${extract}"
+		printf "%sInput%s: 		%s\n" "${green}" "${reset}" "${input_dir}"
+		printf "%sOutput%s: 	%s\n\n" "${green}" "${reset}" "${output_dir}"
+	fi
+}
+
+check_dir() {
+
+# Check if the input and output directory exist
+# If they are not, it will print the usage message, error message and exit
+
+	if [[ ! -d $input_dir ]]; then
+		usage print
+		printf "%s Input directory is not a valid directory\n\n" "${errorbox}"
+		exit 2
 	fi
 	
-fi
-;;
+	if [[ ! -d $output_dir ]]; then
+		usage print
+		printf "%s Output directory is not a valid directory\n\n" "${errorbox}"
+		exit 2
+	fi
 
-	8)	message="${red}[Error]${reset} \t${commandName} is not installed\n";;
-	9)	message="${green}[Info]${reset} \tUsing unzip...\n${green}[Info]${reset} \tPlease note that unzip does not work all archives\n\n";;
-	10)	message="\tPlease install ImageMagick\n\n";;
-	11) message="${green}[Info]${reset} \t${commandName} is installed at ${commandPath}\n";;
-	12)	message="Exiting...\n\n"
-	;;
-	13)	message="\n\t${red}[Error]${reset} Not a valid directory\n\n";;
-	14)
-		message="
-	Usage:	./cbr2pdf.sh --option --option \e[4mVALUE${reset}
+}
+
+check_app() {
+
+# Check if the program exist, if not then it will state that it is not installed
+# and exit the script.
+	
+# If p7z is not installed, the script will fallback to unzip instead. However,
+# due to how some comic archives are compressed, unzip might not be able to 
+# extract those files, thus why p7z is used
+
+	if type -p 7z >/dev/null 2>&1; then
+		use7z=true
+	else
+		use7z=false
+	fi
+	if type -p unzip >/dev/null 2>&1; then
+		useUnzip=true
+	else
+		useUnzip=false
+	fi
+	if type -p convert >/dev/null 2>&1; then
+		useConvert=true
+	else
+		useConvert=false
+	fi
+
+	# Print verbose/debug information
+	if [[ $verbose = true ]] || [[ $debug = true ]]; then
+		printf "%suse7z%s:		%s\n" "${green}" "${reset}" "${use7z}"
+		printf "%suseConvert%s:	%s\n" "${green}" "${reset}" "${useConvert}"
+		printf "%suseUnzip%s:	%s\n\n" "${green}" "${reset}" "${useUnzip}"
+	fi
+
+	if [[ $use7z = false ]]; then
+		printf "%s 7z is not installed, falling back to Unzip\n" "${warningbox}"
+	fi
+
+	if [[ $useUnzip = false ]]; then
+		printf "%s Unzip and 7z is not installed.\n" "${errorbox}"
+		printf "Exiting...\n\n"
+		exit 3
+	fi
+
+	if [[ $useConvert = false ]]; then
+		printf "%s ImageMagick is not installed.\n" "${errorbox}"
+		printf "Exiting...\n\n"
+		exit 3
+	fi
+
+}
+
+usage() { 
+
+# This function prints out the usage message
+
+printf "\
+Usage:	./cbr2pdf.sh --option --option %sVALUE%s
 
 	Options:
 
-	[-v|--verbose]			Enable verbose output
-	[-x|--extract]			Only extract files without converting
+	[-v|--verbose]		Enable verbose output
+	[-x|--extract]		Only extract files without converting
 	[-h|--help]			Displays this message
-	[-i|--input \e[4m\"DIRECTORY\"${reset}]	The input path for the files
-	[-o|--output \e[4m\"DIRECTORY\"${reset}]	The output path for the converted files
+	[-i|--input %s\"DIRECTORY\"%s]	The input path for the files
+	[-o|--output %s\e[4m\"DIRECTORY\"%s]	The output path for the converted files
+	[-d|--debug]		Shows debug information
 
 	This bash script convert all comic book archives with the 
 	file extension .cbr or .cbz recursively from a folder 
@@ -350,64 +308,91 @@ fi
 	This script mainly uses ImageMagick to convert the images
 	to pdf files and 7zip/p7z to extract the archives.
 
-	${yellow}[NOTE]${reset} Both folders must already exist before starting this script
-	${yellow}[NOTE]${reset} This script uses commands from the GNU Core Utils
-	${yellow}[NOTE]${reset} For MacOS, the date command doesn't work the same way as it is in Linux
-	"
-	;;
-	15)	message="Unknown option: $arg\n\n"
-esac
-printf "${message}"
+%s[NOTE]%s Both folders must already exist before starting this script
+
+" \
+"${underline}" "${reset}" \
+"${underline}" "${reset}" \
+"${underline}" "${reset}" \
+"${yellow}" "${reset}"
+
+# By default, this function will exit the program. If we parsed
+# "print" into the function it will just print and not exit
+if [[ "$1" != "print" ]]; then
+	exit 1
+fi
 
 }
 
-# Start script
+main() {
 
-# Declaring color variables
-green="\e[32m\e[1m"
-red="\e[31m\e[1m"
-yellow="\e[33m\e[1m"
-reset="\e[0m"
+	get_args "$@"
+	print_debug
+	print_verbose
+	check_dir
+	check_app
 
-# Reseting variables on startup
-VERBOSE=false
-EXTRACT=false
-HELP=false
+	# Get counter information
+	total=$(find "${input_dir}" -type f | wc -l)
+	total=${total// /}
+	count=1
 
-# Parse arguments
-while [[ $# -gt 0 ]]; do
-	case $1 in
-	    -v|--verbose)
-	        VERBOSE=true
-	        shift
-	    ;;
+	while read -r inputFile; do
+		parent=$(dirname "${input_dir}")			# Get parent directory
+		source_dir=${inputFile%/*}					# Get the source directory
+		source_file=${inputFile##*/}				# Get the source file
+		source_filename=$(basename "$inputFile")	# Get the source filename
+		source_filename=${source_filename%.*}		# Format the source filename
+		source_ext=${inputFile##*.}					# Get the source file extension
+		output=${source_dir#$parent}				# Get destination directory
+		output=${output_dir}/${output#/}			# Format the destination directory
 
-	    -x|--extract)
-			EXTRACT=true
-			shift
-		;;
-	    -h|--help)
-			HELP=true
-			shift
-		;;
-	    -i|--input)
-	        INPUT_PATH="$2"
-	        shift
-	        shift
-	    ;;
-	    -o|--output)
-	        OUTPUT_PATH="$2"
-	        shift
-	        shift
-	    ;;
-	    -*|*)
-			arg="$1"
-	        message 15
-	        message 13
-	        exit 1
-	esac
-done
+		# Make the destination folder
+		mkdir -p "${output}"
+
+		# Detects the file type and skip if it's not a comic book archive
+		if [[ $source_ext == "cbr" ]] || [[ $source_ext == "cbz" ]]; then
+
+			# Print file and directory information
+			print_file_info
+
+			# Make output directory
+			mkdir -p "${output}/${source_filename}"
+
+			# Extract, check, convert and delete
+			extract "${inputFile}" "${output}/${source_filename}"
+			checkFolder "${output}/${source_filename}"
+
+			# If extract only option is parsed, then skip converting and deleting
+			if [[ $extract != true ]]; then
+				convertFile "${output}/${source_filename}/*.{jpg,png}" "${output}/${source_filename}.pdf"
+				delete "${output}/${source_filename}"
+				printf "\n%s Finish converting %s/%s\n\n" "${infobox}" "${output}" "${source_file}"
+			else
+				printf "\n%s Finish extracting %s/%s\n\n" "${infobox}" "${output}" "${source_file}"
+			fi
+		else
+
+			# If the file is not a comic book archive, then print file info and skip
+			print_file_info
+			printf "%s Not a compatible file. Skipping...\n\n" "${warningbox}"
+
+		fi
+
+		# Increment job counter
+		((++count))
+	done < <(find "${input_dir}" -type f)
+	printf "%s\n" "${linebreak}"
+	if [[ $extract != true ]]; then
+		printf "%s Finish converting all files\n" "${infobox}"
+	else
+		printf "%s Finish extracting all files\n" "${infobox}"
+	fi
+	printf "%s\n\n" "${linebreak}"
+
+}
+
+# ========== Start Script ====================================================
 
 trap 'exit 1' INT
-preRun
-main
+main "$@"
