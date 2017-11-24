@@ -157,7 +157,6 @@ get_args() {
 	
 # Determing the parsed arguments
 
-
 	# If no arguments are parsed, print help and exit
 	if [[ -z $1 ]]; then	
 		usage print
