@@ -370,9 +370,9 @@ main() {
 			if [[ $extract != true ]]; then
 				convertFile "${output}/${source_filename}/*.{jpg,png}" "${output}/${source_filename}.pdf"
 				delete "${output}/${source_filename}"
-				printf "\n%s Finish converting %s/%s\n\n" "${infobox}" "${output}" "${source_file}"
+				printf "\n%s Finish converting %s\n\n" "${infobox}" "${source_file}"
 			else
-				printf "\n%s Finish extracting %s/%s\n\n" "${infobox}" "${output}" "${source_file}"
+				printf "\n%s Finish extracting %s\n\n" "${infobox}" "${source_file}"
 			fi
 		else
 
