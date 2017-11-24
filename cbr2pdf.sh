@@ -199,7 +199,7 @@ print_debug() {
 		printf "output: 	%s\n" "${output}"
 		printf "debug: 		%s\n" "${debug}"
 		printf "input_dir: 	%s\n" "${input_dir}"
-		printf "output_dir: 	%s\n" "${output_dir}"
+		printf "output_dir: 	%s\n\n" "${output_dir}"
 	fi
 
 }
@@ -220,6 +220,10 @@ check_dir() {
 
 # Check if the input and output directory exist
 # If they are not, it will print the usage message, error message and exit
+
+	# Trim off the slash at the end of the directories as they break the script
+	input_dir=${input_dir%/}
+	output_dir=${output_dir%/}
 
 	if [[ ! -d $input_dir ]]; then
 		usage print
