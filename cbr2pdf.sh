@@ -297,12 +297,12 @@ Usage:	./cbr2pdf.sh --option --option %sVALUE%s
 
 	Options:
 
-	[-v|--verbose]		Enable verbose output
-	[-x|--extract]		Only extract files without converting
+	[-v|--verbose]			Enable verbose output
+	[-x|--extract]			Only extract files without converting
 	[-h|--help]			Displays this message
 	[-i|--input %s\"DIRECTORY\"%s]	The input path for the files
 	[-o|--output %s\e[4m\"DIRECTORY\"%s]	The output path for the converted files
-	[-d|--debug]		Shows debug information
+	[-d|--debug]			Shows debug information
 
 	This bash script convert all comic book archives with the 
 	file extension .cbr or .cbz recursively from a folder 
