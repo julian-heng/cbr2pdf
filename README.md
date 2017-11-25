@@ -18,7 +18,7 @@ $ ./cbr2pdf.sh
 ## Dependencies
 The main commands used in this script are ```7z``` and ```ImageMagick```, but also include commands from the [GNU Core Utils](https://en.wikipedia.org/wiki/List_of_GNU_Core_Utilities_commands) like ```date```, ```dirname```, ```basename``` and ```printf```. So do keep that in mind. But if you're just running Ubuntu, or Arch Linux or any kind if linux, you should be fine.
 
-For MacOS, you'll need [homebrew](https://brew.sh/) to install imagemagick and 7zip. It will also install the Xcode Commandline tools, which includes ```git```. Curl is also not installed by default.
+For MacOS, you'll need [homebrew](https://brew.sh/) to install imagemagick and 7zip. It will also install the Xcode Commandline tools, which includes ```git```. ```Curl``` is also not installed by default.
 
 ### Installing Dependencies
 #### Ubuntu/Debian
@@ -65,13 +65,13 @@ Usage:	./cbr2pdf.sh --option --option VALUE
 ## Sample Output
 ```
 ┌[julian@Julians-MacBook-Pro]-(~)
-└> ./cbr2pdf.sh -i Input -o Output
+└> ./cbr2pdf.sh -i Input/ -o Output/
 ================================================
 [Info] File information
 ================================================
 Job Number:		1/4
-Source File:		Input/The Transformers - Drift 04 (of 04) (2010).cbz
 Output Directory:	Output/Input
+Source File:		Input/The Transformers - Drift 04 (of 04) (2010).cbz
 
 [Info] Extracting archive...
 [Info] No subfolders detected...
@@ -83,8 +83,8 @@ Output Directory:	Output/Input
 [Info] File information
 ================================================
 Job Number:		2/4
-Source File:		Input/The Transformers - Drift 01 (of 04) (2010).cbz
 Output Directory:	Output/Input
+Source File:		Input/The Transformers - Drift 01 (of 04) (2010).cbz
 
 [Info] Extracting archive...
 [Info] No subfolders detected...
@@ -96,8 +96,8 @@ Output Directory:	Output/Input
 [Info] File information
 ================================================
 Job Number:		3/4
-Source File:		Input/The Transformers - Drift 02 (of 04) (2010).cbz
 Output Directory:	Output/Input
+Source File:		Input/The Transformers - Drift 02 (of 04) (2010).cbz
 
 [Info] Extracting archive...
 [Info] No subfolders detected...
@@ -109,8 +109,8 @@ Output Directory:	Output/Input
 [Info] File information
 ================================================
 Job Number:		4/4
-Source File:		Input/The Transformers - Drift 03 (of 04) (2010).cbz
 Output Directory:	Output/Input
+Source File:		Input/The Transformers - Drift 03 (of 04) (2010).cbz
 
 [Info] Extracting archive...
 [Info] No subfolders detected...
