@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+
+
 # ========== Formating ====================================================
 # This section delclares all of the text formatting required when printing
 # information like color codes and linebreaks.
@@ -34,35 +36,30 @@ print_file_info() {
 # This section prints out the file information using the pre-defined
 # color codes and formatting.
 
+printf "%s\n" "${linebreak}"
+printf "%s File information\n" "${infobox}"
+printf "%s\n" "${linebreak}"
+printf "%sJob Number%s:		%s/%s\n" "${green}" "${reset}" "${count}" "${total}"
+printf "%sOutput Directory%s:	%s\n" "${green}" "${reset}" "${output}"
 if [[ $verbose = true ]] || [[ $debug = true ]]; then
-	printf "%s\n" "${linebreak}"
-	printf "%s File information\n" "${infobox}"
-	printf "%s\n" "${linebreak}"
-	printf "%sJob Number%s:		%s/%s\n" "${green}" "${reset}" "${count}" "${total}"
 	printf "%sParent Directory%s:	%s\n" "${green}" "${reset}" "${parent}"
 	printf "%sSource Directory%s:	%s\n" "${green}" "${reset}" "${source_dir}"
-	printf "%sSource File%s:		%s\n" "${green}" "${reset}" "${inputFile}"
 	printf "%sFile Type%s:		%s\n" "${green}" "${reset}" "${source_ext}"
-	printf "%sOutput Directory%s:	%s\n\n" "${green}" "${reset}" "${output}"
-else
-	printf "%s\n" "${linebreak}"
-	printf "%s File information\n" "${infobox}"
-	printf "%s\n" "${linebreak}"
-	printf "%sJob Number%s:		%s/%s\n" "${green}" "${reset}" "${count}" "${total}"
-	printf "%sSource File%s:		%s\n" "${green}" "${reset}" "${inputFile}"
-	printf "%sOutput Directory%s:	%s\n\n" "${green}" "${reset}" "${output}"
 fi
+printf "%sSource File%s:		%s\n\n" "${green}" "${reset}" "${inputFile}"
+
 }
 
 print_if_verbose() {
 
 # Print a new line if verbose/debug is enabled
 
-	if [[ $verbose = true ]] || [[ $debug = true ]]; then
+	if [[ $verbose = true ]]; then
 		printf "\n%s\n" "${linebreak}"
 	else
 		:
 	fi
+
 }
 
 extract() {
@@ -71,13 +68,13 @@ extract() {
 
 	printf "%s Extracting archive..." "${infobox}"
 	if [[ $use7z = false ]]; then
-		if [[ $verbose = true ]] || [[ $debug = true ]]; then
+		if [[ $verbose = true ]]; then
 			unzip "$1" -d "$2"
 		else
 			unzip "$1" -d "$2" &> /dev/null; spinner
 		fi
 	else
-		if [[ $verbose = true ]] || [[ $debug = true ]]; then
+		if [[ $verbose = true ]]; then
 			7z x "$1" -o"$2"
 		else
 			7z x "$1" -o"$2" &> /dev/null; spinner
@@ -98,13 +95,14 @@ checkFolder() {
 		printf "\n%s No subfolders detected..." "${infobox}"; print_if_verbose
 	else
 		printf "\n%s Subfolders detected, moving..." "${infobox}"; print_if_verbose
-		if [[ $verbose = true ]] || [[ $debug = true ]]; then
+		if [[ $verbose = true ]]; then
 			mv -v "${check}"/* "$1"
 		else
 			mv "${check}"/* "$1"
 		fi
 		rmdir "${check}"
 	fi
+
 }
 
 convertFile() {
@@ -112,7 +110,7 @@ convertFile() {
 # Convert .jpg to .pdf
 
 	printf "\n%s Converting to PDF..." "${infobox}"; print_if_verbose
-	if [[ $verbose = true ]] || [[ $debug = true ]]; then
+	if [[ $verbose = true ]]; then
 		convert "$1" -density 100 -verbose "$2"
 	else
 		convert "$1" -density 100 "$2" &
@@ -126,7 +124,7 @@ delete() {
 # Delete the extracted files
 
 	printf "\n%s Deleting extracted files..." "${infobox}"; print_if_verbose
-	if [[ $verbose = true ]] || [[ $debug = true ]]; then
+	if [[ $verbose = true ]]; then
 		rm -rfv "$1"
 	else
 		rm -rf "$1"
@@ -171,7 +169,7 @@ get_args() {
 			-h|--help) usage; help=true ;;
 			-i|--input) input_dir="$2"; shift; input=true ;;
 			-o|--output) output_dir="$2"; shift; output=true ;;
-			-d|--debug) debug=true ;;
+			-d|--debug) debug=true; set -x ;;
 	    	-*|*) usage print; printf "%s Unknown option: $1\n\n" "${errorbox}"; exit 2
 		esac
 		shift
@@ -213,6 +211,7 @@ print_verbose() {
 		printf "%sInput%s: 		%s\n" "${green}" "${reset}" "${input_dir}"
 		printf "%sOutput%s: 	%s\n\n" "${green}" "${reset}" "${output_dir}"
 	fi
+
 }
 
 check_dir() {
@@ -329,6 +328,7 @@ fi
 
 main() {
 
+	trap 'exit 1' INT
 	get_args "$@"
 	print_debug
 	print_verbose
@@ -350,7 +350,7 @@ main() {
 		output=${source_dir#$parent}				# Get destination directory
 		output=${output_dir}/${output#/}			# Format the destination directory
 
-		# Make the destination folder
+		# Make the output folder
 		mkdir -p "${output}"
 
 		# Detects the file type and skip if it's not a comic book archive
@@ -397,5 +397,4 @@ main() {
 
 # ========== Start Script ====================================================
 
-trap 'exit 1' INT
 main "$@"
