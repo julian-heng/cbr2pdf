@@ -21,11 +21,7 @@ errorbox="${red}[Error]${reset}"
 # Thus they are assigned false before the script starts, then they will
 # get assigned true if enabled.
 
-verbose="false"
-extract="false"
-help="false"
-input="false"
-output="false"
+export {verbose,extract,help,debug,input,output}="false"
 
 # ========== Functions ====================================================
 
@@ -137,7 +133,7 @@ spinner() {
 	local delay=0.1
 	local spinstr='/-\|'
 	while ps a | awk '{print $1}' | grep -q "$pid"; do
-		local temp=${spinstr#?}
+		local temp="${spinstr#?}"
 		printf " [%c]  " "$spinstr"
 		local spinstr="$temp${spinstr%"$temp"}"
 		sleep "$delay"
@@ -160,12 +156,12 @@ get_args() {
 
 	while [[ "$#" -gt 0 ]]; do
 		case "$1" in
-			-v|--verbose) verbose=true ;;
-			-x|--extract) extract=true ;;
-			-h|--help) usage; help=true ;;
-			-i|--input) input_dir="$2"; shift; input=true ;;
-			-o|--output) output_dir="$2"; shift; output=true ;;
-			-d|--debug) debug=true; set -x ;;
+			"-v"|"--verbose") verbose="true" ;;
+			"-x"|"--extract") extract="true" ;;
+			"-h"|"--help") usage; help="true" ;;
+			"-i"|"--input") input_dir="$2"; shift; input="true" ;;
+			"-o"|"--output") output_dir="$2"; shift; output="true" ;;
+			"-d"|"--debug") debug="true"; set -x ;;
 	    	-*|*) arg="$1"; usage print_error
 		esac
 		shift
