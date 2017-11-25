@@ -81,7 +81,7 @@ checkFolder() {
 # This detects if there is a subfolder after extraction and
 # moves the files up one level
 
-	check=$(find "$1" -type d -maxdepth 2 | sed -n '2 p')
+	check="$(find "$1" -type d -maxdepth 2 | sed -n '2 p')"
 
 	if [[ -z "$check" ]]; then
 		printf "\n%s No subfolders detected..." "${infobox}" && print_if_verbose
