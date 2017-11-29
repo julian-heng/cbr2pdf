@@ -27,7 +27,7 @@ yn="${green}y${reset}/${red}n${reset}"
 export {verbose,extract,help,debug,input,output,single_file,use7z,useUnzip,useConvert}="false"
 export {input_dir,output_dir}="null"
 version="2.0"
-working_directory=$(pwd)
+working_directory="$(pwd)"
 
 # ========== Functions ====================================================
 
@@ -71,7 +71,6 @@ get_full_path() {
 	else
 		full_path="$(cd "$1" || exit; pwd -P)"	# Change to the directory and get the parent directory
 	fi
-
 
 	cd "${working_directory}" || exit			# Change back to the original working directory
 	printf "%s\n" "${full_path%/}"				# Print out the full directory as well as trim trailing slash
