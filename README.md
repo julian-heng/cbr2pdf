@@ -40,7 +40,7 @@ $ ./cbr2pdf.sh [-v|--verbose] [-x|--extract] [-h|--help] [-i|--input "DIRECTORY"
 ```
 
 ## Help Output
-```sh
+```
 Usage:	./cbr2pdf.sh --option --option VALUE
 
 	Options:
