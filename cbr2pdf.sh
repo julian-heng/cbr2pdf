@@ -401,7 +401,7 @@ main() {
 		mkdir -p "${output_file}"
 
 		# Detects the file type and skip if it's not a comic book archive
-		if [[ "$source_ext" == "cbr" ]] || [[ "$source_ext" == "cbz" ]]; then
+		if [[ "${source_ext,,}" == "cbr" ]] || [[ "${source_ext,,}" == "cbz" ]]; then
 
 			# Print file and directory information
 			print_file_info
