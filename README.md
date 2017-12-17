@@ -89,7 +89,7 @@ Usage:	./cbr2pdf.sh --option --option VALUE
 ================================================
 [!] File information
 ================================================
-Job Number:			1/4
+Job Number:		1/4
 Output Directory:	/Users/julian/Output/Input/(2010) The Transformers - Drift [#1-4]
 Source File:		/Users/julian/Input/(2010) The Transformers - Drift [#1-4]/The Transformers - Drift 01 (of 04) (2010).cbz
 
@@ -102,7 +102,7 @@ Source File:		/Users/julian/Input/(2010) The Transformers - Drift [#1-4]/The Tra
 ================================================
 [!] File information
 ================================================
-Job Number:			2/4
+Job Number:		2/4
 Output Directory:	/Users/julian/Output/Input/(2010) The Transformers - Drift [#1-4]
 Source File:		/Users/julian/Input/(2010) The Transformers - Drift [#1-4]/The Transformers - Drift 02 (of 04) (2010).cbz
 
@@ -115,7 +115,7 @@ Source File:		/Users/julian/Input/(2010) The Transformers - Drift [#1-4]/The Tra
 ================================================
 [!] File information
 ================================================
-Job Number:			3/4
+Job Number:		3/4
 Output Directory:	/Users/julian/Output/Input/(2010) The Transformers - Drift [#1-4]
 Source File:		/Users/julian/Input/(2010) The Transformers - Drift [#1-4]/The Transformers - Drift 03 (of 04) (2010).cbz
 
@@ -128,7 +128,7 @@ Source File:		/Users/julian/Input/(2010) The Transformers - Drift [#1-4]/The Tra
 ================================================
 [!] File information
 ================================================
-Job Number:			4/4
+Job Number:		4/4
 Output Directory:	/Users/julian/Output/Input/(2010) The Transformers - Drift [#1-4]
 Source File:		/Users/julian/Input/(2010) The Transformers - Drift [#1-4]/The Transformers - Drift 04 (of 04) (2010).cbz
 
