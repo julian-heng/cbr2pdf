@@ -25,19 +25,21 @@ yn="${green}y${reset}/${red}n${reset}"
 # Thus they are assigned false before the script starts, then they will
 # get assigned true if enabled.
 
-export verbose="false"
-export extract="false"
-export help="false"
-export debug="false"
-export input="false"
-export output="false"
-export single_file="false"
-export keep_file="false"
-export skip_spinner="false"
-export skip_summary="false"
-export use7z="false"
-export useUnzip="false"
-export useConvert="false"
+verbose="false"
+extract="false"
+help="false"
+debug="false"
+input="false"
+output="false"
+single_file="false"
+keep_file="false"
+skip_spinner="false"
+skip_summary="false"
+no_color="false"
+skip_list="false"
+use7z="false"
+useUnzip="false"
+useConvert="false"
 
 export {input_dir,output_dir}="null"
 
@@ -46,6 +48,7 @@ file_list_sort=()
 fail_to_convert=()
 able_to_convert=()
 incompatible=()
+
 old_ifs="${IFS}"
 version="2.1"
 working_directory="$(pwd)"
@@ -146,6 +149,10 @@ print_file_list() {
 
 # This function prints out the list of files to convert
 
+	if [[ "$skip_list" == "true" ]]; then
+		return 0
+	fi
+
 	printf "%s\n" "${linebreak}"
 	printf "%s\n" "${info} File list"
 	printf "%s\n" "${linebreak}"
@@ -240,9 +247,9 @@ checkExtension() {
 		else
 			# If it isn't, then rename file to a lowercase extension
 			if [[ "$verbose" == "true" ]]; then
-				mv -v "$check" "${output_file}/${source_filename}/${filename}.${file_ext,,}"
+				mv -v "$check" "${output_filename}/${filename}.${file_ext,,}"
 			else
-				mv "$check" "${output_file}/${source_filename}/${filename}.${file_ext,,}"
+				mv "$check" "${output_filename}/${filename}.${file_ext,,}"
 			fi
 
 		fi
@@ -332,6 +339,8 @@ get_args() {
 			"--version") version ;;
 			"--no-spinner") skip_spinner="true" ;;
 			"--no-summary") skip_summary="true" ;;
+			"--no-color") reset_colors ;;
+			"--no-list") skip_list="true" ;; 
 	    	-*|*) arg="$1"; usage print_error
 		esac
 		shift
@@ -480,6 +489,8 @@ Usage:	./cbr2pdf.sh --option --option ${underline}VALUE${reset}
 	[--version]			Print version number
 	[--no-spinner]			Disable the spinner
 	[--no-summary]			Disable printing summary (still print failed)
+	[--no-color]			Disable color output
+	[--no-list]			Disable printing file listing
 
 	This bash script convert all comic book archives with the 
 	file extension .cbr or .cbz recursively from a folder 
@@ -521,6 +532,20 @@ exit 0
 
 }
 
+reset_colors() {
+
+	unset green
+	unset red
+	unset yellow
+	unset bold
+
+	info="${box}"
+	warning="${box}"
+	error="${box}"
+	yn="y/n"
+
+}
+
 main() {
 
 	trap 'exit 1' INT
@@ -547,6 +572,7 @@ main() {
 			output_file="${source_dir#$parent}"			# Get destination directory
 		fi
 		output_file="${output_dir}${output_file}"		# Format the destination directory
+		output_filename="${output_file}/${source_filename}"
 
 		# Make the output folder
 		mkdir -p "${output_file}"
@@ -558,28 +584,31 @@ main() {
 			print_file_info
 
 			# Make output directory
-			mkdir -p "${output_file}/${source_filename}"
+			mkdir -p "${output_filename}"
 
 			# Extract, check, convert and delete
-			extract "${inputFile}" "${output_file}/${source_filename}"
-			checkFolder "${output_file}/${source_filename}"
-			checkExtension "${output_file}/${source_filename}"
-			convertFile "${output_file}/${source_filename}/*.{jpg,png}" "${output_file}/${source_filename}.pdf"
-			delete "${output_file}/${source_filename}"
+			extract "${inputFile}" "${output_filename}"
+			checkFolder "${output_filename}"
+			checkExtension "${output_filename}"
+			convertFile "${output_filename}/*.{jpg,png}" "${output_filename}.pdf"
+			delete "${output_filename}"
 
 			# Determine if the converting succeeded.
 			# If it did, then add the filename to the array of completed
 			# If it didn't, then add the filename to the array of incomplete
-			if [[ -f "${output_file}/${source_filename}.pdf" ]]; then
-				able_to_convert+=("${inputFile}")
-			else
-				fail_to_convert+=("${inputFile}")
-			fi
-
-			# If extract only option is parsed, then print appropriate message
 			if [[ "$extract" == "true" ]]; then
+				if [[ ! -z "$(find "${output_filename}" -type f)" ]]; then
+    				able_to_convert+=("${inputFile}")
+				else
+					fail_to_convert+=("${inputFile}")
+				fi
 				printf "\n%s\n\n" "${info} Finish extracting \"${source_file}\""
 			else
+				if [[ -f "${output_filename}.pdf" ]]; then
+					able_to_convert+=("${inputFile}")
+				else
+					fail_to_convert+=("${inputFile}")
+				fi
 				printf "\n%s\n\n" "${info} Finish converting \"${source_file}\""
 			fi
 
