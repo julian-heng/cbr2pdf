@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1117
 
 # ========== Formating ====================================================
 # This section delclares all of the text formatting required when printing
 # information like color codes and linebreaks.
 
-green=$'\e[32m\e[1m'
-red=$'\e[31m\e[1m'
-yellow=$'\e[33m\e[1m'
+green=$'\e[32m'
+red=$'\e[31m'
+yellow=$'\e[33m'
 reset=$'\033[0m'
 underline=$'\e[4m'
 bold=$'\e[1m'
@@ -24,9 +25,29 @@ yn="${green}y${reset}/${red}n${reset}"
 # Thus they are assigned false before the script starts, then they will
 # get assigned true if enabled.
 
-export {verbose,extract,help,debug,input,output,single_file,use7z,useUnzip,useConvert}="false"
+export verbose="false"
+export extract="false"
+export help="false"
+export debug="false"
+export input="false"
+export output="false"
+export single_file="false"
+export keep_file="false"
+export skip_spinner="false"
+export skip_summary="false"
+export use7z="false"
+export useUnzip="false"
+export useConvert="false"
+
 export {input_dir,output_dir}="null"
-version="2.0"
+
+file_list_input=()
+file_list_sort=()
+fail_to_convert=()
+able_to_convert=()
+incompatible=()
+old_ifs="${IFS}"
+version="2.1"
 working_directory="$(pwd)"
 
 # ========== Functions ====================================================
@@ -40,14 +61,55 @@ print_file_info() {
 	printf "%s\n" "${info} File information"
 	printf "%s\n" "${linebreak}"
 	
-	printf "%s\n" "${green}Job Number${reset}:		${count}/${total}"
-	printf "%s\n" "${green}Output Directory${reset}:	${output_file}"
+	printf "%s\n" "${green}${bold}Job Number${reset}:		${count}/${total}"
+	printf "%s\n" "${green}${bold}Output Directory${reset}:	${output_file}"
 	if [[ "$verbose" == "true" ]]; then
-		printf "%s\n" "${green}Parent Directory${reset}:	${parent}"
-		printf "%s\n" "${green}Source Directory${reset}:	${source_dir}"
-		printf "%s\n" "${green}File Type${reset}:		${source_ext}"
+		printf "%s\n" "${green}${bold}Parent Directory${reset}:	${parent}"
+		printf "%s\n" "${green}${bold}Source Directory${reset}:	${source_dir}"
+		printf "%s\n" "${green}${bold}File Type${reset}:		${source_ext}"
 	fi
-	printf "%s\n\n" "${green}Source File${reset}:		${inputFile}"
+	printf "%s\n\n" "${green}${bold}Source File${reset}:		${inputFile}"
+
+}
+
+print_summary() {
+
+# This section prints out the conversion summary after
+# all files have been processed
+
+	if [[ "$skip_summary" == "false" ]]; then
+
+		printf "%s\n" "${linebreak}"
+		printf "%s\n" "${info} Completed files"
+		printf "%s\n" "${linebreak}"
+		printf "%s\n" "${able_to_convert[@]}"
+		printf "\n"
+
+		if [[ ${#incompatible[@]} -gt 0 ]]; then
+			printf "%s\n" "${linebreak}"
+			printf "%s\n" "${warning} Incompatible files"
+			printf "%s\n" "${linebreak}"
+			printf "%s\n" "${incompatible[@]}"
+			printf "\n"
+		fi
+
+	fi
+
+	if [[ ${#fail_to_convert[@]} -gt 0 ]]; then
+		printf "%s\n" "${linebreak}"
+		printf "%s\n" "${error} Failed to convert ${#fail_to_convert[@]} files"
+		printf "%s\n" "${linebreak}"
+		printf "%s\n" "${fail_to_convert[@]}"
+		printf "\n"
+	fi
+
+	printf "%s\n" "${linebreak}"
+	if [[ "$extract" != true ]]; then
+		printf "%s\n" "${info} Finish converting all files"
+	else
+		printf "%s\n" "${info} Finish extracting all files"
+	fi
+	printf "%s\n\n" "${linebreak}"
 
 }
 
@@ -58,6 +120,37 @@ print_if_verbose() {
 	if [[ "$verbose" == "true" ]]; then
 		printf "\n%s\n" "${linebreak}"
 	fi
+
+}
+
+get_file_list() {
+
+# This function will add the list of files to convert
+# into an array. The array is then sorted.
+
+	while read -r i; do
+		file_list_input+=("${i}")
+	done < <(find "${input_dir}" -type f)
+
+	IFS=$'\n' file_list_sort=("$(sort <<<"${file_list_input[*]}")")
+	IFS="${old_ifs}"
+
+	unset file_list_input
+	while read -r i; do
+		file_list_input+=("${i}")
+	done < <(printf "%s\n" "${file_list_sort[@]}")
+
+}
+
+print_file_list() {
+
+# This function prints out the list of files to convert
+
+	printf "%s\n" "${linebreak}"
+	printf "%s\n" "${info} File list"
+	printf "%s\n" "${linebreak}"
+	printf "%s\n" "${file_list_input[@]}"
+	printf "\n"
 
 }
 
@@ -86,13 +179,21 @@ extract() {
 		if [[ "$verbose" == "true" ]]; then
 			unzip "$1" -d "$2"
 		else
-			unzip "$1" -d "$2" &> /dev/null; spinner
+			if [[ "$skip_spinner" == "true" ]]; then
+				unzip "$1" -d "$2" &> /dev/null
+			else
+				unzip "$1" -d "$2" &> /dev/null; spinner
+			fi
 		fi
 	else
 		if [[ "$verbose" == "true" ]]; then
 			7z x "$1" -o"$2"
 		else
-			7z x "$1" -o"$2" &> /dev/null; spinner
+			if [[ "$skip_spinner" == "true" ]]; then
+				7z x "$1" -o"$2" &> /dev/null
+			else
+				7z x "$1" -o"$2" &> /dev/null; spinner
+			fi
 		fi
 	fi
 
@@ -120,16 +221,54 @@ checkFolder() {
 
 }
 
+checkExtension() {
+
+# Conversion will fail if the file extension does not
+# match due to a difference in case. This function
+# will individually check each extracted images to
+# ensure that they are all lowercase.
+
+	while read -r check; do
+
+		local file="${check##*/}"
+		local filename="${file%.*}"				# Get filename
+		local file_ext="${file##*.}"			# Get file extension
+
+		# Condition to check if the file extension is already lowercase
+		if [[ "$file_ext" == "jpg" ]] || [[ "$file_ext" == "png" ]]; then
+			:
+		else
+			# If it isn't, then rename file to a lowercase extension
+			if [[ "$verbose" == "true" ]]; then
+				mv -v "$check" "${output_file}/${source_filename}/${filename}.${file_ext,,}"
+			else
+				mv "$check" "${output_file}/${source_filename}/${filename}.${file_ext,,}"
+			fi
+
+		fi
+
+	done < <(find "$1" -type f)
+
+}
+
 convertFile() {
 
 # Convert .jpg to .pdf
+
+	if [[ "$extract" == "true" ]]; then
+		return 0
+	fi
 
 	printf "\n%s" "${info} Converting to PDF..." && print_if_verbose
 	if [[ "$verbose" == "true" ]]; then
 		convert "$1" -density 100 -verbose "$2"
 	else
-		convert "$1" -density 100 "$2" &
-		spinner
+		if [[ "$skip_spinner" == "true" ]]; then
+			convert "$1" -density 100 "$2"
+		else
+			convert "$1" -density 100 "$2" &
+			spinner
+		fi
 	fi
 
 }
@@ -137,6 +276,10 @@ convertFile() {
 delete() {
 
 # Delete the extracted files
+
+	if [[ "$extract" == "true" ]] || [[ "$keep_file" == "true" ]]; then
+		return 0
+	fi
 
 	printf "\n%s" "${info} Deleting extracted files..." && print_if_verbose
 	if [[ "$verbose" == "true" ]]; then
@@ -182,10 +325,13 @@ get_args() {
 			"-v"|"--verbose") verbose="true" ;;
 			"-x"|"--extract") extract="true" ;;
 			"-h"|"--help") usage; help="true" ;;
+			"-k"|"--keep") keep_file="true" ;;
 			"-i"|"--input") input_dir="$2"; shift; input="true" ;;
 			"-o"|"--output") output_dir="$2"; shift; output="true" ;;
-			"--version") version ;;
 			"-d"|"--debug") debug="true"; set -x ;;
+			"--version") version ;;
+			"--no-spinner") skip_spinner="true" ;;
+			"--no-summary") skip_summary="true" ;;
 	    	-*|*) arg="$1"; usage print_error
 		esac
 		shift
@@ -215,10 +361,10 @@ print_verbose() {
 # Print verbose information
 
 	if [[ "$verbose" == "true" ]]; then
-		printf "\n%s\n" "${green}Verbose Output${reset}: ${verbose}"
-		printf "%s\n" "${green}Extract Only${reset}:	${extract}"
-		printf "%s\n" "${green}Input${reset}: 		${input_dir}"
-		printf "%s\n\n" "${green}Output${reset}: 	${output_dir}"
+		printf "\n%s\n" "${green}${bold}Verbose Output${reset}: ${verbose}"
+		printf "%s\n" "${green}${bold}Extract Only${reset}:	${extract}"
+		printf "%s\n" "${green}${bold}Input${reset}: 		${input_dir}"
+		printf "%s\n\n" "${green}${bold}Output${reset}: 	${output_dir}"
 	fi
 
 }
@@ -291,9 +437,9 @@ check_app() {
 
 	# Print verbose/debug information
 	if [[ "$verbose" == "true" ]] || [[ "$debug" == "true" ]]; then
-		printf "%s\n" "${green}use7z${reset}:		${use7z}"
-		printf "%s\n" "${green}useConvert${reset}:	${useConvert}"
-		printf "%s\n\n" "${green}useUnzip${reset}:	${useUnzip}"
+		printf "%s\n" "${green}${bold}use7z${reset}:		${use7z}"
+		printf "%s\n" "${green}${bold}useConvert${reset}:	${useConvert}"
+		printf "%s\n\n" "${green}${bold}useUnzip${reset}:	${useUnzip}"
 	fi
 
 	if [[ "$use7z" == "false" ]]; then
@@ -327,10 +473,13 @@ Usage:	./cbr2pdf.sh --option --option ${underline}VALUE${reset}
 	[-v|--verbose]			Enable verbose output
 	[-x|--extract]			Only extract files
 	[-h|--help]			Displays this message
+	[-k|--keep]			Keep extracted files
 	[-i|--input ${underline}\"DIRECTORY\"${reset}]	The input path for the files
 	[-o|--output ${underline}\"DIRECTORY\"${reset}]	The output path for the converted files
-	[--version]			Print version number
 	[-d|--debug]			Shows debug information
+	[--version]			Print version number
+	[--no-spinner]			Disable the spinner
+	[--no-summary]			Disable printing summary (still print failed)
 
 	This bash script convert all comic book archives with the 
 	file extension .cbr or .cbz recursively from a folder 
@@ -365,7 +514,7 @@ printf "%s\n" "\
 
 ${linebreak}
 Version: cbr2pdf.sh ${green}${bold}${version}${reset}
-Made by Julian Heng, 28/11/2017
+Made by Julian Heng, 17/12/2017
 ${linebreak}
 "
 exit 0
@@ -381,12 +530,14 @@ main() {
 	check_dir
 	check_app
 
+	get_file_list
+	print_file_list
+
 	# Get counter information
-	total="$(find "${input_dir}" -type f | wc -l)"
-	total="${total// /}"
+	total="${#file_list_input[@]}"
 	count=1
 
-	while read -r inputFile; do		
+	while read -r inputFile; do	
 		parent="${input_dir%/*}"						# Get parent directory
 		source_dir="${inputFile%/*}"					# Get the source directory
 		source_file="${inputFile##*/}"					# Get the source filename
@@ -395,7 +546,7 @@ main() {
 		if [[ "$single_file" == "false" ]]; then		# Check if converting one file
 			output_file="${source_dir#$parent}"			# Get destination directory
 		fi
-		output_file="${output_dir}/${output_file#/}"	# Format the destination directory
+		output_file="${output_dir}${output_file}"		# Format the destination directory
 
 		# Make the output folder
 		mkdir -p "${output_file}"
@@ -412,20 +563,32 @@ main() {
 			# Extract, check, convert and delete
 			extract "${inputFile}" "${output_file}/${source_filename}"
 			checkFolder "${output_file}/${source_filename}"
+			checkExtension "${output_file}/${source_filename}"
+			convertFile "${output_file}/${source_filename}/*.{jpg,png}" "${output_file}/${source_filename}.pdf"
+			delete "${output_file}/${source_filename}"
 
-			# If extract only option is parsed, then skip converting and deleting
-			if [[ "$extract" != "true" ]]; then
-				convertFile "${output_file}/${source_filename}/*.{jpg,png}" "${output_file}/${source_filename}.pdf"
-				delete "${output_file}/${source_filename}"
-				printf "\n%s\n\n" "${info} Finish converting \"${source_file}\""
+			# Determine if the converting succeeded.
+			# If it did, then add the filename to the array of completed
+			# If it didn't, then add the filename to the array of incomplete
+			if [[ -f "${output_file}/${source_filename}.pdf" ]]; then
+				able_to_convert+=("${inputFile}")
 			else
+				fail_to_convert+=("${inputFile}")
+			fi
+
+			# If extract only option is parsed, then print appropriate message
+			if [[ "$extract" == "true" ]]; then
 				printf "\n%s\n\n" "${info} Finish extracting \"${source_file}\""
+			else
+				printf "\n%s\n\n" "${info} Finish converting \"${source_file}\""
 			fi
 
 		else
 
-			# If the file is not a comic book archive, then print file info and skip
+			# If the file is not a comic book archive,
+			# then print file info, add to array and skip
 			print_file_info
+			incompatible+=("${inputFile}")
 			printf "%s\n\n" "${warning} Not a compatible file. Skipping..."
 
 		fi
@@ -433,15 +596,9 @@ main() {
 		# Increment job counter
 		((++count))
 
-	done < <(find "${input_dir}" -type f)
+	done < <(printf "%s\n" "${file_list_input[@]}")
 
-	printf "%s\n" "${linebreak}"
-	if [[ "$extract" != true ]]; then
-		printf "%s\n" "${info} Finish converting all files"
-	else
-		printf "%s\n" "${info} Finish extracting all files"
-	fi
-	printf "%s\n\n" "${linebreak}"
+	print_summary
 
 }
 
