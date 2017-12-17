@@ -60,6 +60,8 @@ Usage:	./cbr2pdf.sh --option --option VALUE
 	[--version]			Print version number
 	[--no-spinner]			Disable the spinner
 	[--no-summary]			Disable printing summary (still print failed)
+	[--no-color]			Disable color output
+	[--no-list]			Disable printing file listing
 
 	This bash script convert all comic book archives with the
 	file extension .cbr or .cbz recursively from a folder
