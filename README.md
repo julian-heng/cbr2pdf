@@ -205,4 +205,4 @@ Just like in the extract function, we used ```convert``` inside of a function wh
 After converting the files, the extracted folder is then deleted and then moved on the the next file.
 
 ## License
-This project is licensed under the GPL-3.0 License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details
