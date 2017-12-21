@@ -2,7 +2,7 @@
 cbr2pdf is a bash script will convert all .cbr and .cbz files recursively from a folder to PDF files in a seperate folder with pretty colors and stats. This script mainly uses ImageMagick to convert the images to pdf files and 7zip/p7z to extract the archives.
 
 ## TODO
- 1. Find alternatives to `p7zip` as they seem to operate differently across different distro. E.g macOS version of `p7zip` doesn't have any issues with one particular archive, but `p7zip` in Fedora cannot extract the exact same archive. Interestingly, the command `7za` and `7z` are different, the later of which is able to extra
+ 1. Find alternatives to `p7zip` as they seem to operate differently across different distro. E.g macOS version of `p7zip` doesn't have any issues with one particular archive, but `p7zip` in Fedora cannot extract the exact same archive. Interestingly, the command `7za` and `7z` are different, the later of which is able to extract the archive.
  2. Find a way to use [img2pdf](https://gitlab.mister-muffin.de/josch/img2pdf) instead of ImageMagick
  3. Rewrite to python? (See above)
  4. Ensure that this script runs on different distros, mainly BSD and other linux distros like Fedora, CentOS, etc
