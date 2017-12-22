@@ -4,7 +4,7 @@
 
 # ========== Formating ====================================================
 # This section delclares all of the text formatting required when printing
-# information like color codes and linebreaks.
+# information like color codes and linebreakss.
 
 green=$'\e[32m'
 red=$'\e[31m'
@@ -12,7 +12,7 @@ yellow=$'\e[33m'
 reset=$'\033[0m'
 underline=$'\e[4m'
 bold=$'\e[1m'
-linebreak=$'================================================'
+line="$(printf '=%.0s' {1..48})"
 
 box="[!]"
 info="${green}${bold}${box}${reset}"
@@ -27,9 +27,10 @@ yn="${green}y${reset}/${red}n${reset}"
 # get assigned true if enabled.
 
 export {verbose,extract,help,keep_file,quiet,single_file}="false"
-export {skip_spinner,skip_summary,skip_list,useConvert}="false"
+export {parallel,skip_spinner,skip_summary,skip_list,useConvert}="false"
 
 export {input_dir,output_dir}="null"
+export {p_amount,total,count}=0
 
 file_list_input=()
 file_list_sort=()
@@ -38,7 +39,7 @@ able_to_convert=()
 incompatible=()
 
 old_ifs="${IFS}"
-version="2.3"
+version="2.4"
 working_directory="$(pwd)"
 
 # ========== Printing Functions ===========================================
@@ -61,7 +62,7 @@ print_if_verbose() {
 # Print a new line if verbose is enabled
 
 	if [[ "$verbose" == "true" ]]; then
-		prin "\n%s\n" "${linebreak}"
+		prin "\n%s\n" "${line}"
 	fi
 
 }
@@ -81,10 +82,12 @@ print_verbose() {
 
 print_header() {
 
+# Prints header information
+
 	case $1 in
-		info)	prin "%s\n%s\n%s\n" "${linebreak}" "${info} ${2}" "${linebreak}" ;;
-		warn)	prin "%s\n%s\n%s\n" "${linebreak}" "${warning} ${2}" "${linebreak}" ;;
-		error)	prin "%s\n%s\n%s\n" "${linebreak}" "${error} ${2}" "${linebreak}" ;;
+		info)	prin "%s\n%s\n%s\n" "${line}" "${info} ${2}" "${line}" ;;
+		warn)	prin "%s\n%s\n%s\n" "${line}" "${warning} ${2}" "${line}" ;;
+		error)	prin "%s\n%s\n%s\n" "${line}" "${error} ${2}" "${line}" ;;
 	esac
 
 }
@@ -116,8 +119,39 @@ print_file_list() {
 	fi
 
 	print_header info "File list"
-	prin "%s\n" "${file_list_input[@]}"
-	prin "\n"
+
+	if [[ "$parallel" != "true" ]]; then
+		prin "%s\n" "${file_list_input[@]}"
+		printf "\n"
+	fi
+
+}
+
+print_split_list() {
+
+# This function prints out the list of files to convert after
+# the input list has been seperated into 4 groups
+
+	if [[ "$skip_list" == "true" ]]; then
+		return 0
+	fi
+
+	prin "%s\n%s\n" "${green}${bold}Group 1:${reset}" "${group_1[@]}"
+	printf "\n"
+
+	if [[ ${#group_2[@]} -gt 0 ]]; then
+		prin "%s\n%s\n" "${green}${bold}Group 2${reset}:" "${group_2[@]}"
+		printf "\n"
+
+		if [[ ${#group_3[@]} -gt 0 ]]; then
+			prin "%s\n%s\n" "${green}${bold}Group 3${reset}:" "${group_3[@]}"
+			printf "\n"
+	
+			if [[ ${#group_4[@]} -gt 0 ]]; then
+			prin "%s\n%s\n" "${green}${bold}Group 4${reset}:" "${group_4[@]}"
+			fi
+		fi
+	fi
 
 }
 
@@ -126,24 +160,26 @@ print_summary() {
 # This section prints out the conversion summary after
 # all files have been processed
 
-	if [[ "$skip_summary" != "true" ]]; then
+	if [[ "$parallel" != "true" ]]; then
+		if [[ "$skip_summary" != "true" ]]; then
 
-		print_header info "Completed files"
-		prin "%s\n" "${able_to_convert[@]}"
-		prin "\n"
-
-		if [[ ${#incompatible[@]} -gt 0 ]]; then
-			print_header warn "Incompatible files"
-			prin "%s\n" "${incompatible[@]}"
-			prin "\n"
+			print_header info "Completed files"
+			prin "%s\n" "${able_to_convert[@]}"
+			printf "\n"
+	
+			if [[ ${#incompatible[@]} -gt 0 ]]; then
+				print_header warn "Incompatible files"
+				prin "%s\n" "${incompatible[@]}"
+				printf "\n"
+			fi
+	
 		fi
 
-	fi
-
-	if [[ ${#fail_to_convert[@]} -gt 0 ]]; then
-		print_header error "Failed to convert ${#fail_to_convert[@]} files"
-		prin "%s\n" "${fail_to_convert[@]}"
-		prin "\n"
+		if [[ ${#fail_to_convert[@]} -gt 0 ]]; then
+			print_header error "Failed to convert ${#fail_to_convert[@]} files"
+			prin "%s\n" "${fail_to_convert[@]}"
+			printf "\n"
+		fi
 	fi
 
 	if [[ "$extract" != true ]]; then
@@ -204,6 +240,7 @@ Usage:	./cbr2pdf.sh --option --option ${underline}VALUE${reset}
 	[-h|--help]			Displays this message
 	[-k|--keep]			Keep extracted files
 	[-q|--quiet]			Suppress all output
+	[-p|--parallel ${underline}\"VALUE\"${reset}]		Run in parallel
 	[-i|--input ${underline}\"DIRECTORY\"${reset}]	The input path for the files
 	[-o|--output ${underline}\"DIRECTORY\"${reset}]	The output path for the converted files
 	[--version]			Print version number
@@ -242,10 +279,10 @@ version() {
 
 printf "%s\n" "\
 
-${linebreak}
+${line}
 Version: cbr2pdf.sh ${green}${bold}${version}${reset}
-Made by Julian Heng, 21/12/2017
-${linebreak}
+Made by Julian Heng, 23/12/2017
+${line}
 "
 exit 0
 
@@ -282,17 +319,93 @@ get_file_list() {
 	done < <(printf "%s\n" "${file_list_sort[@]}")
 	unset file_list_sort
 
-}
-
-check_file_list() {
-
-# This functions checks if the array is empty
-
+	# Determine if input directory is empty
 	if [[ -z "${file_list_input[*]}" ]]; then
 		usage print
 		printf "%s\n\n" "${error} Input directory is empty"
 		exit 4
 	fi
+
+}
+
+split_list(){
+
+# This function is for parallelisation
+# Parallisation is hard coded to have 4 split groups
+# at the moment. It is preferable for the number of
+# parallelisation processes to be user set. But at the
+# moment I can't find a way to implement that function.
+
+	# Skip function if parallel flag is not set
+	if [[ "$parallel" != "true" ]]; then
+		return 0
+	fi
+
+	case 1:${p_amount:--} in 
+		($((p_amount >= 4))*)		p_amount=4 ;;
+		($((p_amount >= 2))*|"")	p_amount=2 ;;
+		*)							p_amount=1 ;;
+	esac
+
+	# Calculate the amount of files per group
+	split_amount="$((total / p_amount))"
+	a=0
+
+	IFS=$'\n' 
+
+	group_1=()
+	group_2=()
+	group_3=()
+	group_4=()
+
+	# Setting the files into each group
+	# Yes, this is ugly code. Hopefully this can
+	# be solved in the future
+
+	case "$p_amount" in
+		4)
+			while read -r i; do
+				group_1+=("${i}")
+			done < <(printf "%s\n" "${file_list_input[@]:a:split_amount}")
+			a="$((a + split_amount))"
+		
+			while read -r i; do
+				group_2+=("${i}")
+			done < <(printf "%s\n" "${file_list_input[@]:a:split_amount}")
+			a="$((a + split_amount))"
+		
+			while read -r i; do
+				group_3+=("${i}")
+			done < <(printf "%s\n" "${file_list_input[@]:a:split_amount}")
+			a="$((a + split_amount))"
+		
+			while read -r i; do
+				group_4+=("${i}")
+			done < <(printf "%s\n" "${file_list_input[@]:a}")
+		;;
+
+		2)
+			while read -r i; do
+				group_1+=("${i}")
+			done < <(printf "%s\n" "${file_list_input[@]:a:split_amount}")
+			a="$((a + split_amount))"
+
+			while read -r i; do
+				group_2+=("${i}")
+			done < <(printf "%s\n" "${file_list_input[@]:a}")
+		;;
+
+		1)
+			while read -r i; do
+				group_1+=("${i}")
+			done < <(printf "%s\n" "${file_list_input[@]}")
+		;;
+	esac
+
+	IFS="${old_ifs}"
+
+	# Print each group list
+	print_split_list
 
 }
 
@@ -311,19 +424,20 @@ get_args() {
 
 	while [[ "$#" -gt 0 ]]; do
 		case "$1" in
-			"-v"|"--verbose") verbose="true"; quiet="false" ;;
-			"-x"|"--extract") extract="true" ;;
-			"-h"|"--help") usage ;;
-			"-k"|"--keep") keep_file="true" ;;
-			"-q"|"--quiet") quiet="true"; verbose="false" ;;
-			"-i"|"--input") input_dir="$2"; shift ;;
-			"-o"|"--output") output_dir="$2"; shift ;;
-			"--version") version ;;
-			"--no-spinner") skip_spinner="true" ;;
-			"--no-summary") skip_summary="true" ;;
-			"--no-color") reset_colors ;;
-			"--no-list") skip_list="true" ;; 
-	    	-*|*) arg="$1"; usage print_error ;;
+			"-v"|"--verbose")	verbose="true"; quiet="false" ;;
+			"-x"|"--extract")	extract="true" ;;
+			"-h"|"--help")		usage ;;
+			"-k"|"--keep")		keep_file="true" ;;
+			"-q"|"--quiet")		quiet="true"; verbose="false" ;;
+			"-p"|"--parallel")	parallel="true"; p_amount="$2"; shift ;;	
+			"-i"|"--input")		input_dir="$2"; shift ;;
+			"-o"|"--output")	output_dir="$2"; shift ;;
+			"--version")		version ;;
+			"--no-spinner")		skip_spinner="true" ;;
+			"--no-summary")		skip_summary="true" ;;
+			"--no-color")		reset_colors ;;
+			"--no-list")		skip_list="true" ;; 
+	    	-*|*)				arg="$1"; usage print_error ;;
 		esac
 		shift
 	done
@@ -383,15 +497,19 @@ check_dir() {
 	fi
 	
 	if [[ ! -d "$output_dir" ]]; then
-		prin "\n%s\n" "${warning} Output directory is not a valid directory"
-		prin "%s" "${warning} Do you want to create the output directory? [${yn}] "
+		printf "\n%s\n" "${warning} Output directory is not a valid directory"
+		printf "%s" "${warning} Do you want to create the output directory? [${yn}] "
 		read -r a
 		if [[ "$a" =~ ^[Yy]$ ]]; then
-			output_dir="${working_directory}/${cache_output_dir}"
+			if [[ "$output_dir" == "null" ]]; then
+				output_dir="${working_directory}/Output"
+			else
+				output_dir="${working_directory}/${cache_output_dir}"
+			fi
 			mkdir -p "${output_dir}"
-			prin "\n"
+			printf "\n"
 		else
-			prin "\n%s\n\n" "${error} Exiting..."
+			printf "\n%s\n\n" "${error} Exiting..."
 			exit 2
 		fi
 	fi
@@ -449,8 +567,8 @@ extract() {
 	prin "%s" "${info} Extracting archive..." && print_if_verbose
 
 	# Assign parsed options into one string for case to parse easily
-	local evqs="${extractor} ${verbose:0:1} ${quiet:0:1} ${skip_spinner:0:1}"
-	case "$evqs" in
+	local cmd="${extractor} ${verbose:0:1} ${quiet:0:1} ${skip_spinner:0:1}"
+	case "$cmd" in
 		"7z t"*)		7z x "$1" -o"$2" ;;							# Verbose only
 		"7z f f t"| \
 		"7z f t f"| \
@@ -470,13 +588,13 @@ extract() {
 
 }
 
-checkFolder() {
+check_folder() {
 
 # Sometimes, the images are within a folder after extraction
 # This detects if there is a subfolder after extraction and
 # moves the files up one level
 
-	check="$(find "$1" -type d -maxdepth 2 | awk 'NR==2{print;exit}')"
+	local check="$(find "$1" -type d -maxdepth 2 | awk 'NR==2{print;exit}')"
 
 	if [[ -z "$check" ]]; then
 		prin "\n%s" "${info} No subfolders detected..." && print_if_verbose
@@ -492,7 +610,7 @@ checkFolder() {
 
 }
 
-checkExtension() {
+check_extension() {
 
 # Conversion will fail if the file extension does not
 # match due to a difference in case. This function
@@ -530,7 +648,7 @@ checkExtension() {
 
 }
 
-convertFile() {
+convert_file() {
 
 # Convert .jpg to .pdf
 
@@ -542,8 +660,8 @@ convertFile() {
 	prin "\n%s" "${info} Converting to PDF..." && print_if_verbose
 
 	# Assign parsed options into one string for case to parse easily
-	local vqs="${verbose:0:1} ${quiet:0:1} ${skip_spinner:0:1}"
-	case "$vqs" in
+	local cmd="${verbose:0:1} ${quiet:0:1} ${skip_spinner:0:1}"
+	case "$cmd" in
 		"t"*)		convert "$1" -density 100 -verbose "$2" ;;
 		"f f t"| \
 		"f t f"| \
@@ -571,33 +689,52 @@ delete() {
 
 }
 
-main() {
+parallel_process_files() {
 
-	trap 'exit 1' INT
-	get_args "$@"
-	print_verbose
-	check_dir
-	check_app
+# This function sets up the parallelisation process
 
-	get_file_list
-	check_file_list
-	print_file_list
+	if [[ "$extract" == "true" ]]; then
+		prin "%s" "Extracting in parallel..."
+	else
+		prin "%s" "Converting in parallel..."
+	fi
 
-	# Get counter information
-	total="${#file_list_input[@]}"
-	count=1
-
-	while read -r input_file; do	
-		parent_dir="${input_dir%/*}"					# Get parent directory
-		source_dir="${input_file%/*}"					# Get the source directory
-		source_file="${input_file##*/}"					# Get the source filename
-		source_filename="${source_file%.*}"				# Format the source filename
-		source_ext="${source_file##*.}"					# Get the source file extension
-		if [[ "$single_file" != "true" ]]; then			# Check if converting one file
-			output_file="${source_dir#$parent_dir}"		# Get destination directory
+	process_files $(printf "%s\n" "${group_1[@]}") >/dev/null 2>&1 &
+	
+	if [[ "$p_amount" -gt 1 ]]; then
+	process_files $(printf "%s\n" "${group_2[@]}") >/dev/null 2>&1 &
+		if [[ "$p_amount" == 4 ]]; then
+			process_files $(printf "%s\n" "${group_3[@]}") >/dev/null 2>&1 &
+			process_files $(printf "%s\n" "${group_4[@]}") >/dev/null 2>&1 &
 		fi
-		output_file="${output_dir}${output_file}"		# Format the destination directory
-		output_filename="${output_file}/${source_filename}"
+	fi
+
+	if [[ "$skip_spinner" != "true" ]]; then
+		spinner
+	fi
+
+	wait
+	prin "\n\n"
+
+}
+
+process_files() {
+
+# This is the main processing function where the file is
+# extracted and converted.
+
+	local array=("$@")
+	while read -r input_file; do	
+		local parent_dir="${input_dir%/*}"					# Get parent directory
+		local source_dir="${input_file%/*}"					# Get the source directory
+		local source_file="${input_file##*/}"				# Get the source filename
+		local source_filename="${source_file%.*}"			# Format the source filename
+		local source_ext="${source_file##*.}"				# Get the source file extension
+		if [[ "$single_file" != "true" ]]; then				# Check if converting one file
+			local output_file="${source_dir#$parent_dir}"	# Get destination directory
+		fi
+		local output_file="${output_dir}${output_file}"		# Format the destination directory
+		local output_filename="${output_file}/${source_filename}"
 
 		# Make the output folder
 		mkdir -p "${output_file}"
@@ -610,36 +747,79 @@ main() {
 
 		# Extract, check, convert and delete
 		extract "${input_file}" "${output_filename}"
-		checkFolder "${output_filename}"
-		checkExtension "${output_filename}"
-		convertFile "${output_filename}/*.{jpg,png}" "${output_filename}.pdf"
+		check_folder "${output_filename}"
+		check_extension "${output_filename}"
+		convert_file "${output_filename}/*.{jpg,png}" "${output_filename}.pdf"
 		delete "${output_filename}"
 
-		# Determine if the converting succeeded.
+		# Determine if the converting succeeded
 		# If it did, then add the filename to the array of completed
 		# If it didn't, then add the filename to the array of incomplete
-		if [[ "$extract" == "true" ]]; then
-			if [[ ! -z "$(find "${output_filename}" -type f)" ]]; then
-    			able_to_convert+=("${input_file}")
-    			prin "\n%s\n\n" "${info} Finish extracting \"${source_file}\""
+		# This section is skipped if parallel is on
+		if [[ "$parallel" != "true" ]]; then
+			if [[ "$extract" == "true" ]]; then
+				if [[ ! -z "$(find "${output_filename}" -type f)" ]]; then
+					able_to_convert+=("${input_file}")
+					prin "\n%s\n\n" "${info} Finish extracting \"${source_file}\""
+				else
+					fail_to_convert+=("${input_file}")
+					prin "\n%s\n\n" "${error} Failed to extract \"${source_file}\""
+				fi
 			else
-				fail_to_convert+=("${input_file}")
-				prin "\n%s\n\n" "${error} Failed to extract \"${source_file}\""
+				if [[ -f "${output_filename}.pdf" ]]; then
+					able_to_convert+=("${input_file}")
+					prin "\n%s\n\n" "${info} Finish converting \"${source_file}\""
+				else
+					fail_to_convert+=("${input_file}")
+					prin "\n%s\n\n" "${error} Failed to convert \"${source_file}\""
+				fi
 			fi
-		else
-			if [[ -f "${output_filename}.pdf" ]]; then
-				able_to_convert+=("${input_file}")
-				prin "\n%s\n\n" "${info} Finish converting \"${source_file}\""
-			else
-				fail_to_convert+=("${input_file}")
-				prin "\n%s\n\n" "${error} Failed to convert \"${source_file}\""
-			fi
+			# Increment job counter
+			((++count))
 		fi
 
-	# Increment job counter
-	((++count))
+	done < <(printf "%s\n" "${array[@]}")
 
-	done < <(printf "%s\n" "${file_list_input[@]}")
+}
+
+init_process() {
+
+# This function determines if the parallelisation flag
+# is on, and then selects the appropriate function.
+
+	IFS=$'\n'
+
+	if [[ "$parallel" == "true" ]]; then
+		parallel_process_files
+	else
+		process_files "$(printf "%s\n" "${file_list_input[@]}")"
+	fi
+
+	IFS="${old_ifs}"
+}
+
+get_counter() {
+
+	# Get counter information
+	total="${#file_list_input[@]}"
+	count=1
+
+}
+
+main() {
+
+	trap 'exit 1' INT
+	get_args "$@"
+	print_verbose
+	check_dir
+	check_app
+
+	get_file_list
+	print_file_list
+	get_counter
+
+	split_list
+	init_process
 
 	print_summary
 
