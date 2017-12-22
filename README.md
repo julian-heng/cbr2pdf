@@ -7,6 +7,11 @@ cbr2pdf is a bash script will convert all .cbr and .cbz files recursively from a
  3. Rewrite to python? (See above)
  4. Ensure that this script runs on different distros, mainly BSD and other linux distros like Fedora, CentOS, etc
 
+## Performance
+Recently, I've added a dodgy way of running the script in parallel. To see if parallelisation helps, see the [performace](performance.md) page.
+
+TL:DR - Script runs very well when runnning with 2 parallels, slower with 4 parallels and having the spinner enabled slows down the script tremendously. 
+
 ## Installation
 ### Git
 ```sh
