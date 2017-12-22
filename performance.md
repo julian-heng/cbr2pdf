@@ -13,7 +13,7 @@ I wanted to see how much better the script runs in parallel, thus I conducted th
  * No parallel with quiet mode
 
 ## Results
-```sh
+```
 # Antergos VM
 
               `.-/::/-``                   julian@Antergos-VirtualBox 
