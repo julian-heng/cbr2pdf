@@ -56,32 +56,34 @@ $ ./cbr2pdf.sh --option --option VALUE
 
 ## Help Output
 ```
-Usage:	./cbr2pdf.sh --option --option VALUE
+Usage:  ./cbr2pdf.sh --option --option VALUE
 
-	Options:
+    Options:
 
-	[-v|--verbose]			Enable verbose output
-	[-x|--extract]			Only extract files
-	[-h|--help]			Displays this message
-	[-k|--keep]			Keep extracted files
-	[-q|--quiet]			Suppress all output
-	[-i|--input "DIRECTORY"]	The input path for the files
-	[-o|--output "DIRECTORY"]	The output path for the converted files
-	[--version]			Print version number
-	[--no-spinner]			Disable the spinner
-	[--no-summary]			Disable printing summary (still print failed)
-	[--no-color]			Disable color output
-	[--no-list]			Disable printing file listing
+    [-v|--verbose]          Enable verbose output
+    [-x|--extract]          Only extract files
+    [-h|--help]         Displays this message
+    [-k|--keep]         Keep extracted files
+    [-q|--quiet]            Suppress all output
+    [-p|--parallel "VALUE"]     Run in parallel
+    [-l|--log-level "VALUE"]    Determine level of output details
+    [-i|--input "DIRECTORY"]    The input path for the files
+    [-o|--output "DIRECTORY"]   The output path for the converted files
+    [--version]         Print version number
+    [--no-spinner]          Disable the spinner
+    [--no-summary]          Disable printing summary (still print failed)
+    [--no-color]            Disable color output
+    [--no-list]         Disable printing file listing
 
-	This bash script convert all comic book archives with the
-	file extension .cbr or .cbz recursively from a folder
-	to PDF files in a seperate folder. It can also do single
-	files.
+    This bash script convert all comic book archives with the
+    file extension .cbr or .cbz recursively from a folder
+    to PDF files in a seperate folder. It can also do single
+    files.
 
-	This script mainly uses ImageMagick to convert the images
-	to pdf files and 7zip/p7z to extract the archives.
+    This script mainly uses ImageMagick to convert the images
+    to pdf files and 7zip/p7z to extract the archives.
 
-	Made by Julian Heng
+    Made by Julian Heng
 
 [!] Both folders must already exist before starting this script
 ```
