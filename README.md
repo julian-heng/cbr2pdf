@@ -2,10 +2,10 @@
 cbr2pdf is a bash script will convert all .cbr and .cbz files recursively from a folder to PDF files in a seperate folder with pretty colors and stats. This script mainly uses ImageMagick to convert the images to pdf files and 7zip/p7z to extract the archives.
 
 ## TODO
- 1. Find alternatives to `p7zip` as they seem to operate differently across different distro. E.g macOS version of `p7zip` doesn't have any issues with one particular archive, but `p7zip` in Fedora cannot extract the exact same archive. On Xubuntu, the archive can be extracted but the files are corrupted. Interestingly, the command `7za` and `7z` are different, the later of which is able to extract the archive.
- 2. Find a way to use [img2pdf](https://gitlab.mister-muffin.de/josch/img2pdf) instead of ImageMagick
- 3. Rewrite to python? (See above)
- 4. Ensure that this script runs on different distros, mainly BSD and other linux distros like Fedora, CentOS, etc
+  1. Find alternatives to `p7zip` as they seem to operate differently across different distro. E.g macOS version of `p7zip` doesn't have any issues with one particular archive, but `p7zip` in Fedora cannot extract the exact same archive. On Xubuntu, the archive can be extracted but the files are corrupted. Interestingly, the command `7za` and `7z` are different, the later of which is able to extract the archive.
+  2. Find a way to use [img2pdf](https://gitlab.mister-muffin.de/josch/img2pdf) instead of ImageMagick
+  3. Rewrite to python? (See above)
+  4. Ensure that this script runs on different distros, mainly BSD and other linux distros like Fedora, CentOS, etc
 
 ## Performance
 Recently, I've added a dodgy way of running the script in parallel. To see if parallelisation helps, see the [performance](performance.md) page.
@@ -29,6 +29,8 @@ $ ./cbr2pdf.sh
 ## Dependencies
 The main commands used in this script are `7z` and `ImageMagick`, but also include commands from the [GNU Core Utils](https://en.wikipedia.org/wiki/List_of_GNU_Core_Utilities_commands) like `sort`, `basename` and `printf`. So do keep that in mind. But if you're just running Ubuntu, or Arch Linux or any kind if linux, you should be fine.
 
+The script also relies on bash-4.4 (September 2016) or above.
+
 For MacOS, you'll need [homebrew](https://brew.sh/) to install ImageMagick and 7zip. It will also install the Xcode Commandline tools, which includes `git`. `Curl` is also not installed by default.
 
 ### Installing Dependencies
@@ -43,6 +45,14 @@ $ sudo pacman -S p7zip imagemagick
 #### Fedora
 ```sh
 $ sudo dnf install p7zip ImageMagick
+```
+#### openSUSE
+```sh
+$ sudo zypper install p7zip ImageMagick
+```
+#### FreeBSD
+```sh
+$ sudo pkg install p7zip imagemagick
 ```
 #### macOS
 ```sh
@@ -66,7 +76,8 @@ Usage:  ./cbr2pdf.sh --option --option VALUE
     [-k|--keep]         Keep extracted files
     [-q|--quiet]            Suppress all output
     [-p|--parallel "VALUE"]     Run in parallel
-    [-l|--log-level "VALUE"]    Determine level of output details
+    [-l|--loglevel "VALUE"]     Determine level of output details
+    [-w|--overwrite]        Overwrite existing files
     [-i|--input "DIRECTORY"]    The input path for the files
     [-o|--output "DIRECTORY"]   The output path for the converted files
     [--version]         Print version number
@@ -168,6 +179,14 @@ Source File:		/Users/julian/Input/(2010) The Transformers - Drift [#1-4]/The Tra
 └>
 ```
 
+## Exit Codes
+  * 0 - Finished successfully
+  * 1 - Script was interrupted
+  * 2 - Unknown flags or no flags parsed
+  * 3 - Input/Output directory not valid
+  * 4 - 7z/unzip or ImageMagick not installed
+  * 5 - Wrong bash version
+
 ## Process
 ### Simplified
 Basically there are 6 steps that the script performs
@@ -192,7 +211,7 @@ Using the `find` command, we create an array containing all the files to be conv
   * `source_filename`: Source filename
   * `source_ext`: Source file extension
   * `output`: Destination directory
-  
+
 By doing so, it makes it easier to form the folder structure on the output directory, as well as detecting file type for filtering out files that isnt `.cbr` or `.cbz`.
 
 #### Extracting Files
