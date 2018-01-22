@@ -10,15 +10,16 @@
 green=$'\e[32m'
 red=$'\e[31m'
 yellow=$'\e[33m'
-reset=$'\033[0m'
+reset=$'\e[0m'
 underline=$'\e[4m'
 bold=$'\e[1m'
-line="$(printf '=%.0s' {1..48})"
+line="================================================"
 
 box="[!]"
 info="${green}${bold}${box}${reset}"
 warning="${yellow}${bold}${box}${reset}"
 error="${red}${bold}${box}${reset}"
+tick="${green}${bold}[✓]${reset}"
 yn="${green}y${reset}/${red}n${reset}"
 
 # ========== Variables ====================================================
@@ -27,7 +28,7 @@ yn="${green}y${reset}/${red}n${reset}"
 # Thus they are assigned false before the script starts, then they will
 # get assigned true if enabled.
 
-export {verbose,extract,help,keep_file,quiet,single_file}="false"
+export {verbose,extract,help,keep_file,quiet,single_file,overwrite}="false"
 export {parallel,skip_spinner,skip_summary,skip_list,useConvert}="false"
 
 export {input_dir,output_dir}="null"
@@ -35,13 +36,13 @@ export {p_amount,total,count}=0
 export log_level=2
 
 file_list_input=()
-file_list_sort=()
 fail_to_convert=()
 able_to_convert=()
 incompatible=()
+existed=()
 
 old_ifs="${IFS}"
-version="2.5"
+version="2.6"
 working_directory="$(pwd)"
 
 # ========== Printing Functions ===========================================
@@ -50,13 +51,8 @@ print_if_verbose() {
 
 # Print a new line if verbose is enabled
 
-	if [[ "$quiet" == "true" ]]; then
-		return 0
-	fi
-
-	if [[ "$verbose" == "true" ]]; then
-		printf "\n%s\n" "${line}"
-	fi
+	[[ "$quiet" == "true" ]] && return 0
+	[[ "$verbose" == "true" ]] && printf "\n%s\n" "${line}"
 
 }
 
@@ -71,6 +67,7 @@ print_verbose() {
 		printf "%s\n" "${green}${bold}Input${reset}: 		${input_dir}"
 		printf "%s\n" "${green}${bold}Output${reset}: 	${output_dir}"
 		printf "%s\n" "${green}${bold}Log Level${reset}: 	${log_level}"
+		printf "%s\n" "${green}${bold}Overwrite${reset}: 	${overwrite}"
 		printf "%s\n\n" "${green}${bold}Parallel${reset}: 	${p_amount} threads"
 	fi
 
@@ -80,7 +77,7 @@ print_header() {
 
 # Prints header information
 
-	case $1 in
+	case "$1" in
 		info)	printf "%s\n%s\n%s\n" "${line}" "${info} ${2}" "${line}" ;;
 		warn)	printf "%s\n%s\n%s\n" "${line}" "${warning} ${2}" "${line}" ;;
 		error)	printf "%s\n%s\n%s\n" "${line}" "${error} ${2}" "${line}" ;;
@@ -94,7 +91,7 @@ print_file_info() {
 # color codes and formatting.
 
 	if ((log_level >= 2)); then
-		print_header info "File information"
+		print_header "info" "File information"
 
 		printf "%s\n" "${green}${bold}Job Number${reset}:		${count}/${total}"
 		printf "%s\n" "${green}${bold}Output Directory${reset}:	${output_file}"
@@ -112,12 +109,10 @@ print_file_list() {
 
 # This function prints out the list of files to convert
 
-	if [[ "$skip_list" == "true" ]]; then
-		return 0
-	fi
+	[[ "$skip_list" == "true" ]] && return 0
 
 	if ((log_level >= 2)); then
-		print_header info "File list"
+		print_header "info" "File list"
 
 		if [[ "$parallel" != "true" ]]; then
 			printf "%s\n" "${file_list_input[@]}"
@@ -132,23 +127,21 @@ print_split_list() {
 # This function prints out the list of files to convert after
 # the input list has been seperated into 4 groups
 
-	if [[ "$skip_list" == "true" ]]; then
-		return 0
-	fi
+	[[ "$skip_list" == "true" ]] && return 0
 
 	if ((log_level >= 2)); then
 		printf "%s\n%s\n" "${green}${bold}Group 1:${reset}" "${group_1[@]}"
 		printf "\n"
 
-		if [[ ${#group_2[@]} -gt 0 ]]; then
+		if ((${#group_2[@]} > 0)); then
 			printf "%s\n%s\n" "${green}${bold}Group 2${reset}:" "${group_2[@]}"
 			printf "\n"
 
-			if [[ ${#group_3[@]} -gt 0 ]]; then
+			if ((${#group_3[@]} > 0)); then
 				printf "%s\n%s\n" "${green}${bold}Group 3${reset}:" "${group_3[@]}"
 				printf "\n"
 
-				if [[ ${#group_4[@]} -gt 0 ]]; then
+				if ((${#group_4[@]} > 0)); then
 				printf "%s\n%s\n" "${green}${bold}Group 4${reset}:" "${group_4[@]}"
 				fi
 			fi
@@ -161,9 +154,7 @@ print_log() {
 
 # This function prints info depending on the log level
 
-	if [[ "$quiet" == "true" ]]; then
-		return 0
-	fi
+	[[ "$quiet" == "true" ]] && return 0
 
 	# Return if log_level is not 1
 	if ((log_level >= 2)); then
@@ -174,7 +165,7 @@ print_log() {
 				case "$2" in
 					"message") printf "%s" "${info} Extracting archive..." && print_if_verbose ;;
 					"parallel_message") printf "%s" "Extracting in parallel with ${green}${bold}[${p_amount}]${reset} threads..." ;;
-					"success") printf "\n%s\n\n" "${info} Finish extracting \"${source_file}\"" ;;
+					"success") printf "\n%s\n\n" "${tick} Finish extracting \"${source_file}\"" ;;
 					"fail") printf "\n%s\n\n" "${error} Failed to extract \"${source_file}\"" ;;
 				esac
 			;;
@@ -183,7 +174,7 @@ print_log() {
 				case "$2" in
 					"message") printf "\n%s" "${info} Converting to PDF..." && print_if_verbose ;;
 					"parallel_message") printf "%s" "Converting in parallel with ${green}${bold}[${p_amount}]${reset} threads..." ;;
-					"success") printf "\n%s\n\n" "${info} Finish converting \"${source_file}\"" ;;
+					"success") printf "\n%s\n\n" "${tick} Finish converting \"${source_file}\"" ;;
 					"fail") printf "\n%s\n\n" "${error} Failed to convert \"${source_file}\"" ;;
 				esac
 			;;
@@ -204,6 +195,7 @@ print_log() {
 			;;
 
 			"delete message") printf "\n%s" "${info} Deleting extracted files..." && print_if_verbose ;;
+			"skip" ) printf "%s\n\n" "${info} File existed, skipping..." && print_if_verbose ;;
 		esac
 
 	else
@@ -219,8 +211,8 @@ print_log() {
 
 			"after")
 				case "$extract" in
-					"true") printf "\r%s\n" "${info} Finish extracting \"${source_file}\"" ;;
-					"false") printf "\r%s\n" "${info} Finish converting \"${source_file}\"" ;;
+					"true") printf "\r%s\n" "${tick} Finish extracting \"${source_file}\"" ;;
+					"false") printf "\r%s\n" "${tick} Finish converting \"${source_file}\"" ;;
 				esac
 			;;
 
@@ -235,27 +227,36 @@ print_summary() {
 # This section prints out the conversion summary after
 # all files have been processed
 
-	if [[ "$quiet" == "true" ]]; then
-		return 0
-	fi
+	[[ "$quiet" == "true" ]] && return 0
 
 	if [[ "$parallel" != "true" ]]; then
+		if ((log_level > 1)); then
+	
+			if [[ "$skip_summary" != "true" ]]; then
+				if ((${#able_to_convert[@]} > 0)); then
+					print_header "info" "Completed files"
+					printf "%s\n" "${able_to_convert[@]}"
+					printf "\n"
+				fi
 
-		if [[ "$skip_summary" != "true" ]]; then
-			print_header info "Completed files"
-			printf "%s\n" "${able_to_convert[@]}"
-			printf "\n"
-
-			if [[ ${#incompatible[@]} -gt 0 ]]; then
-				print_header warn "Incompatible files"
-				printf "%s\n" "${incompatible[@]}"
-				printf "\n"
+				if ((${#existed[@]} > 0)); then
+					print_header "info" "Existed files"
+					printf "%s\n" "${existed[@]}"
+					printf "\n"
+				fi
+	
+				if ((${#incompatible[@]} > 0)); then
+					print_header "warn" "Incompatible files"
+					printf "%s\n" "${incompatible[@]}"
+					printf "\n"
+				fi
+	
 			fi
 
 		fi
 
-		if [[ ${#fail_to_convert[@]} -gt 0 ]]; then
-			print_header error "Failed to convert ${#fail_to_convert[@]} files"
+		if ((${#fail_to_convert[@]} > 0)); then
+			print_header "error" "Failed to convert ${#fail_to_convert[@]} files"
 			printf "%s\n" "${fail_to_convert[@]}"
 			printf "\n"
 		fi
@@ -263,9 +264,9 @@ print_summary() {
 	fi
 
 	if [[ "$extract" != true ]]; then
-		print_header info "Finish converting all files"
+		print_header "info" "Finish converting all files"
 	else
-		print_header info "Finish extracting all files"
+		print_header "info" "Finish extracting all files"
 	fi
 
 }
@@ -278,13 +279,13 @@ spinner() {
 # By Louis Marascio
 
 	local pid="$!"
-	local delay=0.1
+	local delay=0.5
 	local spinstr='/-\|'
-	while ps a | awk '{print $1}' | grep -q "$pid"; do
+	while ps a | awk '{print $1}' | grep -q "${pid}"; do
 		local temp="${spinstr#?}"
 		printf " (%c)  " "$spinstr"
 		local spinstr="$temp${spinstr%"$temp"}"
-		sleep "$delay"
+		sleep "${delay}"
 		printf "\b\b\b\b\b\b"
 	done
 	printf "    \b\b\b\b"
@@ -321,7 +322,8 @@ Usage:	./cbr2pdf.sh --option --option ${underline}VALUE${reset}
 	[-k|--keep]			Keep extracted files
 	[-q|--quiet]			Suppress all output
 	[-p|--parallel ${underline}\"VALUE\"${reset}]		Run in parallel
-	[-l|--log-level ${underline}\"VALUE\"${reset}]	Determine level of output details
+	[-l|--loglevel ${underline}\"VALUE\"${reset}]		Determine level of output details
+	[-w|--overwrite]		Overwrite existing files
 	[-i|--input ${underline}\"DIRECTORY\"${reset}]	The input path for the files
 	[-o|--output ${underline}\"DIRECTORY\"${reset}]	The output path for the converted files
 	[--version]			Print version number
@@ -346,7 +348,7 @@ ${warning} Both folders must already exist before starting this script
 # By default, this function will exit the program. If we parsed
 # "print" into the function it will just print and not exit
 
-	case $1 in
+	case "$1" in
 		print_error)
 				printf "%s\n\n" "${error} Unknown option: ${arg}"
 				exit 2 ;;
@@ -382,34 +384,27 @@ get_file_list() {
 		local file_ext="${i##*.}"
 
 		# Condition to determine if it's an archive
-		if [[ "${file_ext,,}" == "cbr" ]] || [[ "${file_ext,,}" == "cbz" ]]; then
-			file_list_input+=("${i}")	# Add file path to array
-		else
-			incompatible+=("${i}")		# Record in incompatible files
-		fi
+		case "${file_ext,,}" in
+			"cbr"|"cbz")	file_list_input+=("${i}") ;;	# Add file path to array
+			*)				incompatible+=("${i}") ;;		# Record in incompatible files
+		esac
 
-	done < <(find "${input_dir}" -type f)
+	done < <(find "${input_dir}" -type f | sort)
 
-	# Sort array
-	IFS=$'\n' file_list_sort=("$(sort <<<"${file_list_input[*]}")")
-	IFS="${old_ifs}"
-
-	unset file_list_input
-	while read -r i; do
-		file_list_input+=("${i}")
-	done < <(printf "%s\n" "${file_list_sort[@]}")
-	unset file_list_sort
+	# Get counter information
+	total="${#file_list_input[@]}"
+	count=1
 
 	# Determine if input directory is empty
 	if [[ -z "${file_list_input[*]}" ]]; then
-		usage print
+		usage "print"
 		printf "%s\n\n" "${error} Input directory is empty"
-		exit 4
+		exit 3
 	fi
 
 }
 
-split_list(){
+split_list() {
 
 # This function is for parallelisation
 # Parallisation is hard coded to have 4 split groups
@@ -418,13 +413,11 @@ split_list(){
 # moment I can't find a way to implement that function.
 
 	# Skip function if parallel flag is not set
-	if [[ "$parallel" != "true" ]]; then
-		return 0
-	fi
+	[[ "$parallel" != "true" ]] && return 0
 
-	case 1:${p_amount:--} in 
-		($((p_amount >= 4))*)		p_amount=4 ;;
-		($((p_amount >= 2))*|"")	p_amount=2 ;;
+	case "1:${p_amount:--}" in 
+		("$((p_amount >= 4))"*)		p_amount=4 ;;
+		("$((p_amount >= 2))"*|"")	p_amount=2 ;;
 		*)							p_amount=1 ;;
 	esac
 
@@ -498,7 +491,7 @@ get_args() {
 
 	# If no arguments are parsed, print help and exit
 	if [[ -z "$1" ]]; then	
-		usage print
+		usage "print"
 		printf "%s\n\n" "${error} No options specified"
 		exit 2
 	fi
@@ -509,9 +502,10 @@ get_args() {
 			"-x"|"--extract")	extract="true" ;;
 			"-h"|"--help")		usage ;;
 			"-k"|"--keep")		keep_file="true" ;;
-			"-q"|"--quiet")		log_level=0; verbose="true"; quiet="false"; skip_spinner="true" ;;
+			"-q"|"--quiet")		unset log_level; verbose="true"; quiet="false"; skip_spinner="true" ;;
 			"-p"|"--parallel")	parallel="true"; p_amount="$2"; shift ;;
-			"-l"|"--log-level")	log_level=$2; shift ;;
+			"-l"|"--loglevel")	log_level=$2; shift ;;
+			"-w"|"--overwrite")	overwrite="true" ;;
 			"-i"|"--input")		input_dir="$2"; shift ;;
 			"-o"|"--output")	output_dir="$2"; shift ;;
 			"--version")		version ;;
@@ -519,7 +513,7 @@ get_args() {
 			"--no-summary")		skip_summary="true" ;;
 			"--no-color")		reset_colors ;;
 			"--no-list")		skip_list="true" ;; 
-			-*|*)				arg="$1"; usage print_error ;;
+			-*|*)				arg="$1"; usage "print_error" ;;
 		esac
 		shift
 	done
@@ -550,6 +544,14 @@ check_dir() {
 # Check if the input and output directory exist
 # If they are not, it will print the usage message, error message and exit
 
+	# If the output option is not specified, then create an "Output" folder
+	# in the current working directory
+
+	if [[ "$output_dir" == "null" ]]; then
+		output_dir="${working_directory}/Output"
+		mkdir -p "${output_dir}"
+	fi
+
 	# Trim off the slash at the end of the directories as they break the script
 	input_dir="${input_dir%/}"
 	output_dir="${output_dir%/}"
@@ -559,28 +561,19 @@ check_dir() {
 	input_dir="$(get_full_path "${input_dir}")"
 	output_dir="$(get_full_path "${output_dir}")"
 
-	# If the output option is not specified, then create an "Output" folder
-	# in the current working directory
-
-	if [[ "$output_dir" == "null" ]]; then
-		output_dir="${working_directory}/Output"
-		mkdir -p "${output_dir}"
-	fi
-
-
 	if [[ ! -d "$input_dir" ]]; then
 		if [[ -f "$input_dir" ]]; then
 			single_file="true"
 		else
-			usage print
+			usage "print"
 			printf "%s\n\n" "${error} Input directory is not a valid directory"
-			exit 2
+			exit 3
 		fi
 	fi
 
 	if [[ ! -d "$output_dir" ]]; then
-		printf "\n%s\n" "${warning} Output directory is not a valid directory"
-		printf "%s" "${warning} Do you want to create the output directory? [${yn}] "
+		printf "\n%s" "${warning} Output directory is not a valid directory"
+		printf "\n%s" "${warning} Do you want to create the output directory? [${yn}] "
 		read -r a
 		if [[ "$a" =~ ^[Yy]$ ]]; then
 			if [[ "$output_dir" == "null" ]]; then
@@ -592,7 +585,7 @@ check_dir() {
 			printf "\n"
 		else
 			printf "\n%s\n\n" "${error} Exiting..."
-			exit 2
+			exit 3
 		fi
 	fi
 
@@ -602,18 +595,31 @@ check_app() {
 
 # Check if the program exist, if not then it will state that it is not installed
 # and exit the script.
+
+	# Check bash version
+	bash_version="${BASH_VERSION/(*}"
+	bash_version="${bash_version//./ }"
+
+	local -r major="$(awk '{ print $1 }' <<< "${bash_version}")"
+	local -r minor="$(awk '{ print $2 }' <<< "${bash_version}")"
+
+	if ((minor < 4)) || ((major < 4)); then
+		printf "%s\n" "${error} Bash 4.4+ is required. Your current bash version is ${BASH_VERSION}."
+		printf "%s\n\n" "${error} Exiting..."
+		exit 5
+	fi
 	
-# If p7z is not installed, the script will fallback to unzip instead. However,
-# due to how some comic archives are compressed, unzip might not be able to 
-# extract those files, thus why p7z is used
+	# If p7z is not installed, the script will fallback to unzip instead. However,
+	# due to how some comic archives are compressed, unzip might not be able to 
+	# extract those files, thus why p7z is used
 
 	if type -p 7z >/dev/null 2>&1; then
 		extractor="7z"
 	fi
-	if type -p 7za >/dev/null 2>&1 && [[ -z "$extractor" ]]; then
+	if [[ -z "$extractor" ]] && type -p 7za >/dev/null 2>&1; then
 		extractor="7za"
 	fi
-	if type -p unzip >/dev/null 2>&1 && [[ -z "$extractor" ]]; then
+	if [[ -z "$extractor" ]] && type -p unzip >/dev/null 2>&1; then
 		extractor="unzip"
 	fi
 	if type -p convert >/dev/null 2>&1; then
@@ -623,19 +629,20 @@ check_app() {
 	# Print verbose information
 	if [[ "$verbose" == "true" ]]; then
 		printf "%s\n" "${green}${bold}Extractor${reset}:	${extractor}"
+		printf "%s\n\n" "${green}${bold}Bash version${reset}: 	${BASH_VERSION}"
 	fi
 
 	case "$extractor" in
 		unzip)	printf "%s\n" "${warning} 7z is not installed, falling back to Unzip" ;;
 		"")		printf "%s\n" "${error} Unzip and 7z is not installed."
 				printf "%s\n\n" "${error} Exiting..."
-				exit 3 ;;
+				exit 4 ;;
 	esac
 
 	if [[ "$useConvert" != "true" ]]; then
 		printf "%s\n" "${error} ImageMagick is not installed."
 		printf "%s\n\n" "${error} Exiting..."
-		exit 3
+		exit 4
 	fi
 
 }
@@ -643,12 +650,12 @@ check_app() {
 check_log_level() {
 
 	local check=$1
-	case 1:${check:--} in 
-		($((check >= 4))*)		log_level=4; set -x ;;
-		($((check == 3))*)		log_level=3; verbose="true"; quiet="false" ;;
-		($((check == 2))*|"")	log_level=2; verbose="false"; quiet="false" ;;
-		($((check == 1))*)		log_level=1; verbose="false"; quiet="false" ;;
-		($((check == 0))*)		unset log_level; verbose="false"; quiet="true" ;;
+	case "1:${check:--}" in
+		("$((check >= 4))"*)		log_level=4; set -x ;;
+		("$((check == 3))"*)		log_level=3; verbose="true"; quiet="false" ;;
+		("$((check == 2))"*|"")		log_level=2; verbose="false"; quiet="false" ;;
+		("$((check == 1))"*)		log_level=1; verbose="false"; quiet="false" ;;
+		("$((check == 0))"*)		unset log_level; verbose="false"; quiet="true" ;;
 	esac
 
 }
@@ -705,6 +712,18 @@ check_folder() {
 
 }
 
+check_if_exist() {
+
+	if [[ ! -f "$1" || $overwrite == "true" ]]; then
+		[[ -f "$1" ]] && rm -f "$1"
+		return 0
+	else
+		existed+=("${1}")
+		return 1
+	fi
+
+}
+
 check_extension() {
 
 # Conversion will fail if the file extension does not
@@ -721,7 +740,7 @@ check_extension() {
 		local file_ext="${file##*.}"			# Get file extension
 
 		# Condition to check if the file extension is already lowercase
-		if [[ "$file_ext" == "jpg" ]] || [[ "$file_ext" == "png" ]]; then
+		if [[ "$file_ext" == "jpg" || "$file_ext" == "png" ]]; then
 			local return_code=0
 		else
 			# If it isn't, then rename file to a lowercase extension
@@ -749,9 +768,7 @@ convert_file() {
 # Convert .jpg to .pdf
 
 	# Exit if extract flag is set to true
-	if [[ "$extract" == "true" ]]; then
-		return 0
-	fi
+	[[ "$extract" == "true" ]] && return 0
 
 	print_log "convert" "message"
 
@@ -772,9 +789,7 @@ delete() {
 
 # Delete the extracted files
 
-	if [[ "$extract" == "true" ]] || [[ "$keep_file" == "true" ]]; then
-		return 0
-	fi
+	[[ "$extract" == "true" || "$keep_file" == "true" ]] && return 0
 
 	print_log "delete" "message"
 
@@ -822,24 +837,22 @@ parallel_process_files() {
 # This function sets up the parallelisation process
 
 	if [[ "$extract" == "true" ]]; then
-		print_log extract parallel_message
+		print_log "extract" "parallel_message"
 	else
-		print_log convert parallel_message
+		print_log "convert" "parallel_message"
 	fi
 
 	process_files "$(printf "%s\n" "${group_1[@]}")" >/dev/null 2>&1 &
 	
 	if ((p_amount > 0)); then
-	process_files "$(printf "%s\n" "${group_2[@]}")" >/dev/null 2>&1 &
+		process_files "$(printf "%s\n" "${group_2[@]}")" >/dev/null 2>&1 &
 		if ((p_amount == 4)); then
 			process_files "$(printf "%s\n" "${group_3[@]}")" >/dev/null 2>&1 &
 			process_files "$(printf "%s\n" "${group_4[@]}")" >/dev/null 2>&1 &
 		fi
 	fi
 
-	if [[ "$skip_spinner" != "true" ]]; then
-		spinner
-	fi
+	[[ "$skip_spinner" != "true" ]] && spinner
 
 	wait
 	printf "\n\n"
@@ -853,41 +866,51 @@ process_files() {
 
 	local array=("$@")
 	while read -r input_file; do	
-		local parent_dir="${input_dir%/*}"					# Get parent directory
-		local source_dir="${input_file%/*}"					# Get the source directory
-		local source_file="${input_file##*/}"				# Get the source filename
-		local source_filename="${source_file%.*}"			# Format the source filename
-		local source_ext="${source_file##*.}"				# Get the source file extension
-		if [[ "$single_file" != "true" ]]; then				# Check if converting one file
-			local output_file="${source_dir#$parent_dir}"	# Get destination directory
-		fi
-		local output_file="${output_dir}${output_file}"		# Format the destination directory
+		local parent_dir="${input_dir%/*}"							# Get parent directory
+		local source_dir="${input_file%/*}"							# Get the source directory
+		local source_file="${input_file##*/}"						# Get the source filename
+		local source_filename="${source_file%.*}"					# Format the source filename
+		local source_ext="${source_file##*.}"						# Get the source file extension
+		# Check if converting one file
+		[[ "$single_file" != "true" ]] && local output_file="${source_dir#$parent_dir}"
+		local output_file="${output_dir}${output_file}"				# Format the destination directory
 		local output_filename="${output_file}/${source_filename}"
 
-		# Make the output folder
-		mkdir -p "${output_file}"
+		# Check if the converted file is already completed
+		if check_if_exist "${output_filename}.pdf"; then
 
-		# Print file and directory information
-		print_file_info
+			# Make the output folder
+			mkdir -p "${output_file}"
 
-		# Make output directory
-		mkdir -p "${output_filename}"
+			# Print file and directory information
+			print_file_info
 
-		# Print specific info if log_level = 1
-		print_log "before"
+			# Make output for converting
+			mkdir -p "${output_filename}"
 
-		# Extract, check, convert and delete
-		extract "${input_file}" "${output_filename}"
-		check_folder "${output_filename}"
-		check_extension "${output_filename}"
-		convert_file "${output_filename}/*.{jpg,png}" "${output_filename}.pdf"
-		delete "${output_filename}"
+			# Print specific info if log_level = 1
+			print_log "before"
 
-		# Print specific info if log_level = 1
-		print_log "after"
+			# Extract, check, convert and delete
+			extract "${input_file}" "${output_filename}"
+			check_folder "${output_filename}"
+			check_extension "${output_filename}"
+			convert_file "${output_filename}/*.{jpg,png}" "${output_filename}.pdf"
+			delete "${output_filename}"
 
-		# Check the completed files
-		check_completed
+			# Print specific info if log_level = 1
+			print_log "after"
+
+			# Check the completed files
+			check_completed
+
+		else
+
+			print_file_info
+			print_log "skip"
+			((++count))
+
+		fi
 
 	done < <(printf "%s\n" "${array[@]}")
 
@@ -909,26 +932,17 @@ init_process() {
 
 }
 
-get_counter() {
-
-	# Get counter information
-	total="${#file_list_input[@]}"
-	count=1
-
-}
-
 main() {
 
-	trap 'exit 1' INT
+	trap "exit 1" INT
 	get_args "$@"
-	check_log_level "$log_level"
+	check_log_level "${log_level}"
 	print_verbose
 	check_dir
 	check_app
 
 	get_file_list
 	print_file_list
-	get_counter
 
 	split_list
 	init_process
