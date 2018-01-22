@@ -231,7 +231,7 @@ print_summary() {
 
 	if [[ "$parallel" != "true" ]]; then
 		if ((log_level > 1)); then
-	
+
 			if [[ "$skip_summary" != "true" ]]; then
 				if ((${#able_to_convert[@]} > 0)); then
 					print_header "info" "Completed files"
@@ -244,13 +244,13 @@ print_summary() {
 					printf "%s\n" "${existed[@]}"
 					printf "\n"
 				fi
-	
+
 				if ((${#incompatible[@]} > 0)); then
 					print_header "warn" "Incompatible files"
 					printf "%s\n" "${incompatible[@]}"
 					printf "\n"
 				fi
-	
+
 			fi
 
 		fi
@@ -415,7 +415,7 @@ split_list() {
 	# Skip function if parallel flag is not set
 	[[ "$parallel" != "true" ]] && return 0
 
-	case "1:${p_amount:--}" in 
+	case "1:${p_amount:--}" in
 		("$((p_amount >= 4))"*)		p_amount=4 ;;
 		("$((p_amount >= 2))"*|"")	p_amount=2 ;;
 		*)							p_amount=1 ;;
