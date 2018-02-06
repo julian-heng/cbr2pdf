@@ -600,8 +600,8 @@ check_app() {
 	bash_version="${BASH_VERSION/(*}"
 	bash_version="${bash_version//./ }"
 
-	local -r major="$(awk '{ print $1 }' <<< "${bash_version}")"
-	local -r minor="$(awk '{ print $2 }' <<< "${bash_version}")"
+	local major minor
+	read -r major minor < <(awk '{ print $1, $2 }' <<< "${bash_version}")
 
 	if ((minor < 4)) || ((major < 4)); then
 		printf "%s\n" "${error} Bash 4.4+ is required. Your current bash version is ${BASH_VERSION}."
