@@ -1,5 +1,3 @@
-Due to [Microsoft's acquisition of GitHub](http://www.tfir.io/microsoft-acquires-github-for-7-5-billion), this repo will be a mirror of the same repo on [GitLab](https://gitlab.com/julian-heng/cbr2pdf). Please do not send any issues or pull request on GitHub as they will be ignored.
-
 # cbr2pdf
 cbr2pdf is a bash script will convert all .cbr and .cbz files recursively from a folder to PDF files in a seperate folder with pretty colors and stats. This script mainly uses ImageMagick to convert the images to pdf files and 7zip/p7z to extract the archives.
 
