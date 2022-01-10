@@ -603,10 +603,12 @@ check_app() {
 	local major minor
 	read -r major minor < <(awk '{ print $1, $2 }' <<< "${bash_version}")
 
-	if ((minor < 4)) || ((major < 4)); then
-		printf "%s\n" "${error} Bash 4.4+ is required. Your current bash version is ${BASH_VERSION}."
-		printf "%s\n\n" "${error} Exiting..."
-		exit 5
+	if ((major < 4)); then
+		if ((minor < 4)); then
+			printf "%s\n" "${error} Bash 4.4+ is required. Your current bash version is ${BASH_VERSION}."
+			printf "%s\n\n" "${error} Exiting..."
+			exit 5
+		fi
 	fi
 	
 	# If p7z is not installed, the script will fallback to unzip instead. However,
